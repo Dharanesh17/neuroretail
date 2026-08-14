@@ -1,0 +1,20 @@
+Date,Product_ID,Product_Name,Category,Units_Sold,Price_Charged_INR,Competitor_Price_INR,Demand_Score,Cart_Abandonment_Rate
+2025-01-01,PROD-101,NeuroPulse SmartWatch Pro,Wearables,28,21499.00,20999.00,92,0.12
+2025-01-02,PROD-101,NeuroPulse SmartWatch Pro,Wearables,32,21499.00,20999.00,94,0.10
+2025-01-03,PROD-102,AcousticSense ANC Headphones,Audio,45,13999.00,14499.00,85,0.15
+2025-01-04,PROD-103,CogniHome Ambient Smart Hub,Smart Home,22,10499.00,10299.00,90,0.18
+2025-01-05,PROD-104,OptiVision 4K Drone Cam,Electronics,14,37999.00,38999.00,88,0.25
+2025-01-06,PROD-105,BioGrid Ergonomic Desk Lamp,Smart Home,60,5499.00,5799.00,50,0.08
+2025-01-07,PROD-106,HyperCharge MagSafe PowerBank,Accessories,110,3799.00,3699.00,96,0.06
+2025-02-01,PROD-101,NeuroPulse SmartWatch Pro,Wearables,35,21999.00,21200.00,95,0.11
+2025-02-14,PROD-102,AcousticSense ANC Headphones,Audio,65,14299.00,14499.00,89,0.13
+2025-03-01,PROD-103,CogniHome Ambient Smart Hub,Smart Home,28,10799.00,10499.00,91,0.17
+2025-04-01,PROD-104,OptiVision 4K Drone Cam,Electronics,18,38999.00,39500.00,84,0.22
+2025-05-01,PROD-106,HyperCharge MagSafe PowerBank,Accessories,130,3899.00,3750.00,98,0.05
+2025-06-01,PROD-101,NeuroPulse SmartWatch Pro,Wearables,42,22499.00,21500.00,96,0.09
+2025-07-01,PROD-102,AcousticSense ANC Headphones,Audio,50,14499.00,14599.00,87,0.14
+2025-08-15,PROD-104,OptiVision 4K Drone Cam,Electronics,25,39499.00,39999.00,92,0.19
+2025-09-01,PROD-103,CogniHome Ambient Smart Hub,Smart Home,34,10999.00,10699.00,93,0.15
+2025-10-15,PROD-101,NeuroPulse SmartWatch Pro,Wearables,58,22999.00,22499.00,98,0.08
+2025-11-01,PROD-106,HyperCharge MagSafe PowerBank,Accessories,160,3999.00,3850.00,99,0.04
+2025-12-25,PROD-102,AcousticSense ANC Headphones,Audio,80,14999.00,14999.00,95,0.07

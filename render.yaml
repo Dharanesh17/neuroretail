@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: neuroretail-backend
+    runtime: docker
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    envVars:
+      - key: PORT
+        value: 5000
+    plan: free
+
+  - type: web
+    name: neuroretail-frontend
+    runtime: docker
+    dockerContext: ./frontend
+    dockerfilePath: ./frontend/Dockerfile
+    plan: free

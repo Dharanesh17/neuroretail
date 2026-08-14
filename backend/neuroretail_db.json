@@ -1,0 +1,84 @@
+{
+  "stores": [
+    {
+      "id": "STORE-01",
+      "name": "ABC Supermarket",
+      "type": "Supermarket & Grocery",
+      "category": "Retail Grocery",
+      "gstin": "27ABCDE1234F1Z5",
+      "currency": "INR (\u20b9)",
+      "currency_symbol": "\u20b9",
+      "branches_count": 4,
+      "country": "India",
+      "timezone": "Asia/Kolkata",
+      "health_score": 96
+    },
+    {
+      "id": "STORE-02",
+      "name": "XYZ Fashion Outlet",
+      "type": "Apparel & Fashion",
+      "category": "Clothing",
+      "gstin": "29XYZAB5678G2Z1",
+      "currency": "INR (\u20b9)",
+      "currency_symbol": "\u20b9",
+      "branches_count": 2,
+      "country": "India",
+      "timezone": "Asia/Kolkata",
+      "health_score": 91
+    },
+    {
+      "id": "STORE-03",
+      "name": "Fresh Mart Express",
+      "type": "Convenience Store",
+      "category": "Food & Beverages",
+      "gstin": "33FRESH9012H3Z8",
+      "currency": "INR (\u20b9)",
+      "currency_symbol": "\u20b9",
+      "branches_count": 6,
+      "country": "India",
+      "timezone": "Asia/Kolkata",
+      "health_score": 94
+    }
+  ],
+  "active_store_id": "STORE-01",
+  "ai_metrics": {
+    "accuracy": 97.3,
+    "mae": 0.81,
+    "retrain_count": 14,
+    "last_retrained": "2026-08-11 17:52:06"
+  },
+  "alerts": [
+    {
+      "id": "ALT-3",
+      "timestamp": "17:52:06",
+      "type": "AI_RETRAINED",
+      "title": "AI Engine Retrained (Epoch #14)",
+      "message": "Continuous learning step completed. Accuracy increased to 97.3% (MAE: 0.81).",
+      "severity": "info"
+    },
+    {
+      "id": "ALT-1",
+      "timestamp": "18:40:12",
+      "type": "STOCK_CRITICAL",
+      "title": "Critical Stock: SmartWatch Pro",
+      "message": "Current stock (18) is below safety threshold (25). Auto PO suggested.",
+      "severity": "high"
+    },
+    {
+      "id": "ALT-2",
+      "timestamp": "18:25:00",
+      "type": "PRICE_SURGE",
+      "title": "Dynamic Price Lift Recommended",
+      "message": "High demand velocity (+14%) detected. Suggested price lift to \u20b922,399.",
+      "severity": "info"
+    }
+  ],
+  "data_cleaning_logs": {
+    "quality_score": 98,
+    "total_rows_processed": 1420,
+    "duplicates_removed": 14,
+    "missing_imputed": 6,
+    "outliers_adjusted": 3,
+    "status": "Cleaned & Normalized"
+  }
+}

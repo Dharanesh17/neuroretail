@@ -1,0 +1,173 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --nr-primary: #2563eb;
+    --nr-secondary: #4f46e5;
+    --nr-success: #22c55e;
+    --nr-warning: #f59e0b;
+    --nr-error: #ef4444;
+    --nr-border: #e5e7eb;
+    --nr-text: #1f2937;
+    --nr-card: #f8fafc;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans antialiased selection:bg-blue-500 selection:text-white dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+.corp-card {
+  @apply bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-lg shadow-card transition-all duration-200;
+}
+
+.corp-card-hover {
+  @apply hover:shadow-card-hover hover:border-blue-300 dark:hover:border-blue-500/40;
+}
+
+.glass-panel {
+  @apply rounded-lg border border-slate-200 bg-white text-slate-900 shadow-card dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100;
+}
+
+.glass-card-hover {
+  @apply transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-card-hover dark:hover:border-blue-500/50;
+}
+
+.glass-panel h1,
+.glass-panel h2,
+.glass-panel h3,
+.glass-panel h4,
+.glass-panel .text-white {
+  color: #020617;
+}
+
+.glass-panel .text-slate-300,
+.glass-panel .text-slate-200,
+.glass-panel .text-slate-400 {
+  color: #64748b;
+}
+
+.glass-panel .text-cyan-300,
+.glass-panel .text-cyan-400 {
+  color: #2563eb;
+}
+
+.glass-panel .text-indigo-300,
+.glass-panel .text-indigo-400 {
+  color: #4f46e5;
+}
+
+.glass-panel .text-emerald-300,
+.glass-panel .text-emerald-400 {
+  color: #16a34a;
+}
+
+.glass-panel .bg-slate-900\/60,
+.glass-panel .bg-slate-900\/80,
+.glass-panel .bg-slate-900\/40,
+.glass-panel .bg-slate-900,
+.glass-panel .bg-slate-800 {
+  background-color: #f8fafc;
+}
+
+.glass-panel .border-slate-800,
+.glass-panel .border-slate-700 {
+  border-color: #e5e7eb;
+}
+
+.glass-panel input,
+.glass-panel select,
+.glass-panel textarea {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  color: #1f2937;
+}
+
+.glass-panel input:focus,
+.glass-panel select:focus,
+.glass-panel textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.animate-bounce,
+.animate-ping {
+  animation: none !important;
+}
+
+.dark .glass-panel h1,
+.dark .glass-panel h2,
+.dark .glass-panel h3,
+.dark .glass-panel h4,
+.dark .glass-panel .text-white {
+  color: #ffffff;
+}
+
+.dark .glass-panel .text-slate-300,
+.dark .glass-panel .text-slate-200,
+.dark .glass-panel .text-slate-400 {
+  color: #94a3b8;
+}
+
+.dark .glass-panel .text-cyan-300,
+.dark .glass-panel .text-cyan-400 {
+  color: #67e8f9;
+}
+
+.dark .glass-panel .text-indigo-300,
+.dark .glass-panel .text-indigo-400 {
+  color: #a5b4fc;
+}
+
+.dark .glass-panel .text-emerald-300,
+.dark .glass-panel .text-emerald-400 {
+  color: #6ee7b7;
+}
+
+.dark .glass-panel .bg-slate-900\/60,
+.dark .glass-panel .bg-slate-900\/80,
+.dark .glass-panel .bg-slate-900\/40,
+.dark .glass-panel .bg-slate-900,
+.dark .glass-panel .bg-slate-800 {
+  background-color: rgba(2, 6, 23, 0.7);
+}
+
+.dark .glass-panel .border-slate-800,
+.dark .glass-panel .border-slate-700 {
+  border-color: #1e293b;
+}
+
+.dark .glass-panel input,
+.dark .glass-panel select,
+.dark .glass-panel textarea {
+  background-color: #0f172a;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
