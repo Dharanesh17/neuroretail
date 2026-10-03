@@ -293,6 +293,43 @@ class DataStore:
         self.add_audit_log("Approved replenishment", prod["name"], f"{previous_stock} units", f"{prod['stock']} units", "inventory")
         return prod
 
+    def update_product_stock(self, prod_id, new_stock):
+        prod = self.get_product_by_id(prod_id)
+        if prod:
+            prod["stock"] = int(new_stock)
+            self._persist_product(prod)
+            self.save()
+            return prod
+        return None
+
+    def get_inventory_intelligence(self):
+        items = []
+        for product in self.get_products():
+            stock = product.get("stock", 0)
+            min_stock = product.get("min_stock", 10)
+            max_stock = product.get("max_stock", 100)
+            demand_score = product.get("demand_score", 50)
+            daily = max(2, round(demand_score / 12 + product.get("rating", 4) * 0.7))
+            status = "LOW_STOCK" if stock <= min_stock else "OVERSTOCK" if stock >= max_stock else "OPTIMAL"
+            suggested = max(0, max_stock - stock) if status == "LOW_STOCK" else 0
+            items.append({
+                "product_id": product["id"],
+                "name": product["name"],
+                "category": product["category"],
+                "stock": stock,
+                "min_stock": min_stock,
+                "max_stock": max_stock,
+                "unit_cost": product.get("unit_cost", 1000.0),
+                "status": status,
+                "suggested_reorder_qty": suggested,
+                "recommended_stock": max_stock,
+                "safety_stock": min_stock,
+                "eoq_units": max(15, round(daily * 14)),
+                "days_of_cover": round(stock / max(1, daily), 1),
+                "abc_classification": "Class A" if product.get("unit_cost", 0) > 10000 else "Class B" if product.get("unit_cost", 0) > 4000 else "Class C"
+            })
+        return items
+
     def decrement_shelf_stock(self, shelf_id, units=1):
         for shelf in self.shelves:
             if shelf["shelf_id"] == shelf_id:

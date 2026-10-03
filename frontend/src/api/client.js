@@ -279,7 +279,10 @@ export const api = {
   async getInventoryStatus() {
     try {
       const res = await fetch(`${BASE_URL}/inventory/status`);
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        return Array.isArray(data) ? data : (data?.items || []);
+      }
     } catch (e) {}
     return [
       { product_id: "PROD-101", name: "NeuroPulse SmartWatch Pro", category: "Wearables", stock: 18, min_stock: 25, max_stock: 150, status: "LOW_STOCK", suggested_reorder_qty: 132, unit_cost: 11500.0, eoq_units: 85, safety_stock: 25, abc_classification: "Class A" }
@@ -411,7 +414,10 @@ export const api = {
   async getOperationalAlerts() {
     try {
       const res = await fetch(`${BASE_URL}/alerts`);
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        return { alerts: Array.isArray(data) ? data : (data?.alerts || []) };
+      }
     } catch (e) {}
     return { alerts: [] };
   },
@@ -419,7 +425,10 @@ export const api = {
   async getAuditLogs() {
     try {
       const res = await fetch(`${BASE_URL}/audit-logs`);
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        return { logs: Array.isArray(data) ? data : (data?.logs || []) };
+      }
     } catch (e) {}
     return { logs: [] };
   },
@@ -445,7 +454,10 @@ export const api = {
   async getCompetitorAnalysis() {
     try {
       const res = await fetch(`${BASE_URL}/competitor-analysis`);
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        return Array.isArray(data) ? data : (data?.items || []);
+      }
     } catch (e) {}
     return [];
   },

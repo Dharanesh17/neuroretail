@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # NeuroRetail
 
 **NeuroRetail is an AI-powered retail decision-support system that converts sales, pricing, and inventory data into explainable business recommendations.**
@@ -97,7 +96,4 @@ The Users & Roles page provides simple, realistic demo personas:
 - **Store Manager** — dashboard, pricing, inventory, forecasting, actions, and reports.
 - **Analyst** — data, forecasting, performance, analytics, and scenarios.
 - **Supplier** — limited reorder and inventory visibility.
-=======
-# neuroretail
-NeuroRetail is an enterprise-grade AI web application designed for dynamic pricing, ML-driven demand forecasting, autonomous inventory control, customer behavior analytics, hybrid product recommendations, and IoT smart shelf monitoring.
->>>>>>> 7517aad80226d00c18a99e31cc23081853a67521
+
