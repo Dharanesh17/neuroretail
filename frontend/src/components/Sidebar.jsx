@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import {
-  AlertTriangle, Bot, BrainCircuit, ChartNoAxesCombined, ChevronLeft, ChevronRight,
+  AlertTriangle, Bot, ChevronLeft, ChevronRight,
   CircleGauge, ClipboardCheck, FileBarChart, History, LayoutDashboard, LineChart,
-  Package, PackageCheck, Settings, ShieldCheck, SlidersHorizontal, Tags, UploadCloud,
+  Package, PackageCheck, Settings, SlidersHorizontal, Tags, UploadCloud,
   Users
 } from 'lucide-react';
 
@@ -12,11 +12,9 @@ const groups = [
     { id: 'forecast', label: 'Demand Forecast', icon: LineChart },
     { id: 'pricing', label: 'Dynamic Pricing', icon: Tags },
     { id: 'inventory', label: 'Inventory Optimization', icon: PackageCheck },
-    { id: 'recommendations', label: 'AI Recommendations', icon: BrainCircuit, badge: 'New' },
   ] },
   { label: 'Analysis', items: [
     { id: 'scenario', label: 'What-if Simulator', icon: SlidersHorizontal },
-    { id: 'competitors', label: 'Competitor Analysis', icon: ChartNoAxesCombined },
     { id: 'models', label: 'Model Performance', icon: CircleGauge },
     { id: 'quality', label: 'Data Quality', icon: ClipboardCheck },
   ] },
@@ -24,7 +22,7 @@ const groups = [
     { id: 'products', label: 'Products', icon: Package },
     { id: 'alerts', label: 'Alerts', icon: AlertTriangle },
     { id: 'reports', label: 'Reports & Export', icon: FileBarChart },
-    { id: 'audit', label: 'Audit Logs', icon: History },
+    { id: 'audit', label: 'Activity Trail', icon: History },
   ] },
   { label: 'System', items: [
     { id: 'users', label: 'Users & Roles', icon: Users },

@@ -42,20 +42,12 @@
   ],
   "active_store_id": "STORE-01",
   "ai_metrics": {
-    "accuracy": 97.3,
-    "mae": 0.81,
-    "retrain_count": 14,
-    "last_retrained": "2026-08-11 17:52:06"
+    "accuracy": 96.8,
+    "mae": 0.85,
+    "retrain_count": 13,
+    "last_retrained": "2026-10-05 21:05:55"
   },
   "alerts": [
-    {
-      "id": "ALT-3",
-      "timestamp": "17:52:06",
-      "type": "AI_RETRAINED",
-      "title": "AI Engine Retrained (Epoch #14)",
-      "message": "Continuous learning step completed. Accuracy increased to 97.3% (MAE: 0.81).",
-      "severity": "info"
-    },
     {
       "id": "ALT-1",
       "timestamp": "18:40:12",
@@ -74,11 +66,504 @@
     }
   ],
   "data_cleaning_logs": {
-    "quality_score": 98,
-    "total_rows_processed": 1420,
-    "duplicates_removed": 14,
-    "missing_imputed": 6,
-    "outliers_adjusted": 3,
-    "status": "Cleaned & Normalized"
+    "quality_score": 76.3,
+    "total_rows_processed": 16380,
+    "duplicates_removed": 0,
+    "missing_imputed": 0,
+    "outliers_adjusted": 5546,
+    "invalid_prices": 0,
+    "negative_quantities": 0,
+    "invalid_dates": 0,
+    "missing_product_ids": 0,
+    "issues": [
+      {
+        "count": 5546,
+        "message": "5546 price/cost outlier(s) were flagged"
+      }
+    ],
+    "filename": "NeuroRetail_Real_World_Retail_Dataset_With_Product_Images.csv",
+    "timestamp": "2026-10-05 21:16:38",
+    "status": "Needs review"
+  },
+  "users": [
+    {
+      "id": "USR-001",
+      "name": "Ananya Iyer",
+      "email": "ananya.iyer@neuroretail.demo",
+      "role": "Admin",
+      "last_login": "2026-10-05 21:05"
+    },
+    {
+      "id": "USR-002",
+      "name": "Karthik Rao",
+      "email": "karthik.rao@neuroretail.demo",
+      "role": "Store Manager",
+      "last_login": "2026-08-12 09:42"
+    },
+    {
+      "id": "USR-003",
+      "name": "Meera Shah",
+      "email": "meera.shah@neuroretail.demo",
+      "role": "Analyst",
+      "last_login": "2026-08-12 10:18"
+    },
+    {
+      "id": "USR-004",
+      "name": "Vikram Supply Co.",
+      "email": "orders@vikramsupply.demo",
+      "role": "Supplier",
+      "last_login": "2026-08-11 16:07"
+    }
+  ],
+  "audit_logs": [
+    {
+      "id": "AUD-1027",
+      "timestamp": "2026-10-05 21:16",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Validated dataset",
+      "product": "NeuroRetail_Real_World_Retail_Dataset_With_Product_Images.csv",
+      "previous_value": "Uploaded",
+      "new_value": "Quality score 76.3%",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1026",
+      "timestamp": "2026-10-05 21:16",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Uploaded dataset",
+      "product": "NeuroRetail_Real_World_Retail_Dataset_With_Product_Images",
+      "previous_value": "Not registered",
+      "new_value": "16380 rows",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1025",
+      "timestamp": "2026-10-05 21:05",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Validated dataset",
+      "product": "NeuroRetail_Real_World_Retail_Dataset_With_Product_Images.csv",
+      "previous_value": "Uploaded",
+      "new_value": "Quality score 76.3%",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1024",
+      "timestamp": "2026-10-05 20:59",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Uploaded dataset",
+      "product": "NeuroRetail_Real_World_Retail_Dataset_With_Product_Images",
+      "previous_value": "Not registered",
+      "new_value": "16380 rows",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1023",
+      "timestamp": "2026-10-05 13:15",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Processed dataset",
+      "product": "NeuroRetail_Real_World_Retail_Dataset_With_Product_Images",
+      "previous_value": "Raw upload",
+      "new_value": "16380 cleaned rows",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1021",
+      "timestamp": "2026-10-05 13:11",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Uploaded dataset",
+      "product": "NeuroRetail_Real_World_Retail_Dataset_With_Product_Images",
+      "previous_value": "Not registered",
+      "new_value": "16380 rows",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1022",
+      "timestamp": "2026-10-05 13:11",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Validated dataset",
+      "product": "NeuroRetail_Real_World_Retail_Dataset_With_Product_Images.csv",
+      "previous_value": "Uploaded",
+      "new_value": "Quality score 76.3%",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1018",
+      "timestamp": "2026-10-03 13:52",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Uploaded dataset",
+      "product": "reference_doc",
+      "previous_value": "Not registered",
+      "new_value": "5 rows",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1019",
+      "timestamp": "2026-10-03 13:52",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Validated dataset",
+      "product": "reference_doc.csv",
+      "previous_value": "Uploaded",
+      "new_value": "Quality score 86.0%",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1020",
+      "timestamp": "2026-10-03 13:52",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Processed dataset",
+      "product": "reference_doc",
+      "previous_value": "Raw upload",
+      "new_value": "5 cleaned rows",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1012",
+      "timestamp": "2026-10-03 13:35",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Activated dataset",
+      "product": "reference_doc",
+      "previous_value": "Inactive",
+      "new_value": "Active dataset",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1013",
+      "timestamp": "2026-10-03 13:35",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Uploaded dataset",
+      "product": "NeuroRetail_Real_World_Style_Retail_Dataset",
+      "previous_value": "Not registered",
+      "new_value": "16380 rows",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1014",
+      "timestamp": "2026-10-03 13:35",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Validated dataset",
+      "product": "NeuroRetail_Real_World_Style_Retail_Dataset.csv",
+      "previous_value": "Uploaded",
+      "new_value": "Quality score 76.3%",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1015",
+      "timestamp": "2026-10-03 13:35",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Processed dataset",
+      "product": "NeuroRetail_Real_World_Style_Retail_Dataset",
+      "previous_value": "Raw upload",
+      "new_value": "16380 cleaned rows",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1016",
+      "timestamp": "2026-10-03 13:35",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Trained dataset model",
+      "product": "DS-C3AABCF764",
+      "previous_value": "Untrained",
+      "new_value": "Random Forest v1",
+      "type": "model"
+    },
+    {
+      "id": "AUD-1017",
+      "timestamp": "2026-10-03 13:35",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Activated dataset",
+      "product": "NeuroRetail_Real_World_Style_Retail_Dataset",
+      "previous_value": "Inactive",
+      "new_value": "Active dataset",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1009",
+      "timestamp": "2026-10-03 13:34",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Uploaded dataset",
+      "product": "reference_doc",
+      "previous_value": "Not registered",
+      "new_value": "5 rows",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1010",
+      "timestamp": "2026-10-03 13:34",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Validated dataset",
+      "product": "reference_doc.csv",
+      "previous_value": "Uploaded",
+      "new_value": "Quality score 86.0%",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1011",
+      "timestamp": "2026-10-03 13:34",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Processed dataset",
+      "product": "reference_doc",
+      "previous_value": "Raw upload",
+      "new_value": "5 cleaned rows",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1007",
+      "timestamp": "2026-10-03 13:06",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Validated dataset",
+      "product": "NeuroRetail_Real_World_Style_Retail_Dataset.csv",
+      "previous_value": "Uploaded",
+      "new_value": "Quality score 76.3%",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1008",
+      "timestamp": "2026-10-03 13:06",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Validated dataset",
+      "product": "NeuroRetail_Real_World_Style_Retail_Dataset.csv",
+      "previous_value": "Uploaded",
+      "new_value": "Quality score 76.3%",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1005",
+      "timestamp": "2026-10-03 13:03",
+      "user": "Ananya Iyer",
+      "role": "Store Manager",
+      "action": "Changed active role",
+      "product": "Access control",
+      "previous_value": "Admin",
+      "new_value": "Store Manager",
+      "type": "security"
+    },
+    {
+      "id": "AUD-1006",
+      "timestamp": "2026-10-03 13:03",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Changed active role",
+      "product": "Access control",
+      "previous_value": "Store Manager",
+      "new_value": "Admin",
+      "type": "security"
+    },
+    {
+      "id": "AUD-1004",
+      "timestamp": "2026-08-12 10:18",
+      "user": "Meera Shah",
+      "role": "Analyst",
+      "action": "Validated sales dataset",
+      "product": "sales_july.csv",
+      "previous_value": "Pending",
+      "new_value": "Quality score 96%",
+      "type": "data"
+    },
+    {
+      "id": "AUD-1003",
+      "timestamp": "2026-08-12 09:42",
+      "user": "Karthik Rao",
+      "role": "Store Manager",
+      "action": "Approved replenishment",
+      "product": "CogniHome Smart Hub",
+      "previous_value": "12 units",
+      "new_value": "80 units on order",
+      "type": "inventory"
+    },
+    {
+      "id": "AUD-1002",
+      "timestamp": "2026-08-12 09:24",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Updated price",
+      "product": "AcousticSense ANC Headphones",
+      "previous_value": "\u20b913,999",
+      "new_value": "\u20b914,299",
+      "type": "pricing"
+    },
+    {
+      "id": "AUD-1001",
+      "timestamp": "2026-08-12 08:55",
+      "user": "Ananya Iyer",
+      "role": "Admin",
+      "action": "Retrained forecast model",
+      "product": "Demand Forecasting",
+      "previous_value": "v2.3",
+      "new_value": "v2.4",
+      "type": "model"
+    }
+  ],
+  "products_by_store": {
+    "STORE-01": [
+      {
+        "id": "PROD-101",
+        "name": "NeuroPulse SmartWatch Pro",
+        "category": "Wearables",
+        "base_price": 19999.0,
+        "current_price": 21499.0,
+        "competitor_price": 20999.0,
+        "stock": 18,
+        "min_stock": 25,
+        "max_stock": 150,
+        "unit_cost": 11500.0,
+        "demand_score": 88,
+        "rating": 4.8,
+        "return_rate": 0.02,
+        "image_url": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=60"
+      },
+      {
+        "id": "PROD-102",
+        "name": "AcousticSense ANC Headphones",
+        "category": "Audio",
+        "base_price": 14999.0,
+        "current_price": 13999.0,
+        "competitor_price": 14499.0,
+        "stock": 62,
+        "min_stock": 20,
+        "max_stock": 120,
+        "unit_cost": 7500.0,
+        "demand_score": 74,
+        "rating": 4.7,
+        "return_rate": 0.04,
+        "image_url": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60"
+      },
+      {
+        "id": "PROD-103",
+        "name": "CogniHome Smart Hub",
+        "category": "Smart Home",
+        "base_price": 9999.0,
+        "current_price": 10499.0,
+        "competitor_price": 10299.0,
+        "stock": 12,
+        "min_stock": 15,
+        "max_stock": 80,
+        "unit_cost": 5200.0,
+        "demand_score": 92,
+        "rating": 4.5,
+        "return_rate": 0.01,
+        "image_url": "https://images.unsplash.com/photo-1558002038-1055907df827?w=500&auto=format&fit=crop&q=60"
+      },
+      {
+        "id": "PROD-104",
+        "name": "OptiVision 4K Drone Cam",
+        "category": "Electronics",
+        "base_price": 39999.0,
+        "current_price": 37999.0,
+        "competitor_price": 38999.0,
+        "stock": 9,
+        "min_stock": 10,
+        "max_stock": 40,
+        "unit_cost": 22000.0,
+        "demand_score": 81,
+        "rating": 4.9,
+        "return_rate": 0.05,
+        "image_url": "https://images.unsplash.com/photo-1527977966376-1c8408f9f108?w=500&auto=format&fit=crop&q=60"
+      },
+      {
+        "id": "PROD-105",
+        "name": "BioGrid Ergonomic Desk Lamp",
+        "category": "Smart Home",
+        "base_price": 5999.0,
+        "current_price": 5499.0,
+        "competitor_price": 5799.0,
+        "stock": 95,
+        "min_stock": 15,
+        "max_stock": 60,
+        "unit_cost": 2600.0,
+        "demand_score": 45,
+        "rating": 4.4,
+        "return_rate": 0.03,
+        "image_url": "https://images.unsplash.com/photo-1534073828943-f801091bb18c?w=500&auto=format&fit=crop&q=60"
+      },
+      {
+        "id": "PROD-106",
+        "name": "HyperCharge MagSafe PowerBank",
+        "category": "Accessories",
+        "base_price": 3499.0,
+        "current_price": 3799.0,
+        "competitor_price": 3699.0,
+        "stock": 110,
+        "min_stock": 30,
+        "max_stock": 200,
+        "unit_cost": 1500.0,
+        "demand_score": 95,
+        "rating": 4.6,
+        "return_rate": 0.01,
+        "image_url": "https://images.unsplash.com/photo-1609592424009-41130e9d6d53?w=500&auto=format&fit=crop&q=60"
+      }
+    ],
+    "STORE-02": [
+      {
+        "id": "FASH-201",
+        "name": "Organic Denim Jacket",
+        "category": "Apparel",
+        "base_price": 4999.0,
+        "current_price": 5499.0,
+        "competitor_price": 5299.0,
+        "stock": 45,
+        "min_stock": 15,
+        "max_stock": 100,
+        "unit_cost": 2100.0,
+        "demand_score": 86,
+        "rating": 4.6,
+        "return_rate": 0.08,
+        "image_url": "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500&auto=format&fit=crop&q=60"
+      },
+      {
+        "id": "FASH-202",
+        "name": "Urban Leather Boots",
+        "category": "Footwear",
+        "base_price": 7999.0,
+        "current_price": 8499.0,
+        "competitor_price": 8299.0,
+        "stock": 14,
+        "min_stock": 20,
+        "max_stock": 60,
+        "unit_cost": 4100.0,
+        "demand_score": 94,
+        "rating": 4.9,
+        "return_rate": 0.05,
+        "image_url": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=60"
+      }
+    ],
+    "STORE-03": [
+      {
+        "id": "GROC-301",
+        "name": "Organic Cold-Pressed Almond Milk",
+        "category": "Dairy & Beverage",
+        "base_price": 299.0,
+        "current_price": 349.0,
+        "competitor_price": 329.0,
+        "stock": 80,
+        "min_stock": 25,
+        "max_stock": 200,
+        "unit_cost": 160.0,
+        "demand_score": 97,
+        "rating": 4.7,
+        "return_rate": 0.01,
+        "image_url": "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=500&auto=format&fit=crop&q=60"
+      }
+    ]
   }
 }

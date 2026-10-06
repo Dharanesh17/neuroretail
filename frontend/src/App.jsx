@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Bot, MessageSquareText } from 'lucide-react';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
@@ -9,17 +9,21 @@ import InventoryIntelligence from './components/InventoryIntelligence';
 import VoiceAssistantModal from './components/VoiceAssistantModal';
 import RealtimeAlerts from './components/RealtimeAlerts';
 import {
-  AlertsCenter, AuditLog, CompetitorAnalysis, DataQualityMonitor, ExecutiveDashboard,
-  ModelPerformanceCenter, ProductManagement, RecommendationCenter, ReportsCenter,
+  AlertsCenter, AuditLog, DataQualityMonitor, ExecutiveDashboard,
+  ModelPerformanceCenter, ProductManagement, ReportsCenter,
   ScenarioSimulator, SettingsView, UsersRoles
 } from './components/EnterpriseViews';
 import { api } from './api/client';
 
+/* ─── PIPELINE STAGE IDs ─────────────────────────────────────────── */
+const PIPELINE_IDS = ['upload', 'validate', 'clean', 'map', 'process', 'train', 'activate'];
+const makeIdleStatus = () => Object.fromEntries(PIPELINE_IDS.map(id => [id, 'idle']));
+
 const titles = {
   overview: 'Executive Dashboard', upload: 'Data Upload', forecast: 'Demand Forecast', pricing: 'Dynamic Pricing',
-  inventory: 'Inventory Optimization', recommendations: 'AI Recommendations', scenario: 'What-if Simulator',
-  competitors: 'Competitor Analysis', models: 'Model Performance', quality: 'Data Quality', products: 'Products',
-  alerts: 'Alerts', reports: 'Reports & Export', audit: 'Audit Logs', users: 'Users & Roles', settings: 'Settings',
+  inventory: 'Inventory Optimization', scenario: 'What-if Simulator',
+  models: 'Model Performance', quality: 'Data Quality', products: 'Products',
+  alerts: 'Alerts', reports: 'Reports & Export', audit: 'Activity Trail', users: 'Users & Roles', settings: 'Settings',
   assistant: 'NeuroRetail Assistant'
 };
 
@@ -35,6 +39,20 @@ export default function App() {
   const [aiMetrics, setAiMetrics] = useState({ accuracy: 96.8, mae: 0.85, retrain_count: 13 });
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
+
+  /* ── Persisted upload pipeline state (survives dashboard switches) ── */
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadFilename, setUploadFilename] = useState('');
+  const [uploadContent, setUploadContent] = useState('');
+  const [uploadStageStatus, setUploadStageStatus] = useState(makeIdleStatus);
+  const [uploadStageDetail, setUploadStageDetail] = useState({});
+  const [uploadStageProgress, setUploadStageProgress] = useState({});
+  const [uploadRunning, setUploadRunning] = useState(false);
+  const [uploadDone, setUploadDone] = useState(false);
+  const [uploadCleanReport, setUploadCleanReport] = useState(null);
+  const [uploadDatasetId, setUploadDatasetId] = useState(null);
+  const [uploadErrorMsg, setUploadErrorMsg] = useState('');
+  const uploadAbortRef = useRef(false);
 
   const loadData = async () => {
     try {
@@ -61,17 +79,30 @@ export default function App() {
     return result;
   };
 
+  const uploadPersistedProps = {
+    file: uploadFile, setFile: setUploadFile,
+    filename: uploadFilename, setFilename: setUploadFilename,
+    content: uploadContent, setContent: setUploadContent,
+    stageStatus: uploadStageStatus, setStageStatus: setUploadStageStatus,
+    stageDetail: uploadStageDetail, setStageDetail: setUploadStageDetail,
+    stageProgress: uploadStageProgress, setStageProgress: setUploadStageProgress,
+    running: uploadRunning, setRunning: setUploadRunning,
+    done: uploadDone, setDone: setUploadDone,
+    cleanReport: uploadCleanReport, setCleanReport: setUploadCleanReport,
+    datasetId: uploadDatasetId, setDatasetId: setUploadDatasetId,
+    errorMsg: uploadErrorMsg, setErrorMsg: setUploadErrorMsg,
+    abortRef: uploadAbortRef,
+  };
+
   const renderPage = () => {
     const pageProps = { products, onNavigate: setActiveTab };
     switch (activeTab) {
       case 'overview': return <ExecutiveDashboard summary={summary} onNavigate={setActiveTab} />;
-      case 'upload': return <DataUploadModule onDataCalibrated={loadData} />;
+      case 'upload': return <DataUploadModule onDataCalibrated={loadData} onNavigate={setActiveTab} {...uploadPersistedProps} />;
       case 'forecast': return <DemandForecast products={products} />;
       case 'pricing': return <DynamicPricing products={products} onPriceUpdated={loadData} />;
       case 'inventory': return <InventoryIntelligence products={products} onReorderSuccess={loadData} />;
-      case 'recommendations': return <RecommendationCenter onChanged={loadData} />;
       case 'scenario': return <ScenarioSimulator products={products} />;
-      case 'competitors': return <CompetitorAnalysis />;
       case 'models': return <ModelPerformanceCenter />;
       case 'quality': return <DataQualityMonitor onNavigate={setActiveTab} />;
       case 'products': return <ProductManagement {...pageProps} />;

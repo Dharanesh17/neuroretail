@@ -9,6 +9,8 @@ import os
 import sqlite3
 import uuid
 from datetime import datetime, timedelta
+from functools import lru_cache
+from threading import Lock
 
 import joblib
 import numpy as np
@@ -22,6 +24,13 @@ ROOT = os.path.dirname(__file__)
 SQLITE_FILE = os.path.join(ROOT, "neuroretail.db")
 UPLOAD_DIR = os.path.join(ROOT, "uploads")
 MODEL_DIR = os.path.join(ROOT, "models")
+
+# ---- In-process cache for the active dataset's parsed DataFrame ----
+_records_cache: dict[str, pd.DataFrame] = {}
+_records_cache_lock = Lock()
+
+# Rows threshold above which validation uses a random sample (faster for large files)
+_VALIDATION_SAMPLE = 5000
 
 STANDARD_FIELDS = [
     "date", "product_id", "product_name", "category", "subcategory", "units_sold",
@@ -78,8 +87,11 @@ class DatasetService:
         self._initialise_database()
 
     def _connect(self):
-        connection = sqlite3.connect(SQLITE_FILE)
+        connection = sqlite3.connect(SQLITE_FILE, timeout=30)
         connection.row_factory = sqlite3.Row
+        # WAL mode: writers don't block readers; significantly faster for concurrent access
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("PRAGMA synchronous=NORMAL")
         return connection
 
     def _initialise_database(self):
@@ -148,30 +160,39 @@ class DatasetService:
 
     def _read_frame(self, content, filename):
         raw = self._read_bytes(content, filename)
+        return self._parse_raw(raw, filename)
+
+    @staticmethod
+    def _parse_raw(raw: bytes, filename: str) -> pd.DataFrame:
+        """Parse raw bytes into a DataFrame. Centralised so bytes are decoded once."""
         extension = os.path.splitext(filename.lower())[1]
         if not raw:
             raise ValueError("The uploaded file is empty.")
+        buf = io.BytesIO(raw)
         if extension == ".csv":
-            return pd.read_csv(io.BytesIO(raw))
+            # low_memory=False avoids per-chunk dtype guessing which adds overhead
+            return pd.read_csv(buf, low_memory=False)
         if extension in (".xlsx", ".xls"):
-            return pd.read_excel(io.BytesIO(raw))
+            return pd.read_excel(buf)
         if extension == ".json":
-            return pd.read_json(io.BytesIO(raw))
+            return pd.read_json(buf)
         raise ValueError("Only CSV, XLSX, XLS, and JSON retail datasets are supported.")
 
     def upload(self, content, filename, dataset_name=None, description="", created_by="Admin"):
-        frame = self._read_frame(content, filename)
+        # Decode bytes exactly once, then parse into a DataFrame
+        raw = self._read_bytes(content, filename)
+        frame = self._parse_raw(raw, filename)
         if frame.empty:
             raise ValueError("The uploaded file contains no data rows.")
         dataset_id = f"DS-{uuid.uuid4().hex[:10].upper()}"
         dataset_name = (dataset_name or os.path.splitext(os.path.basename(filename))[0]).strip()[:120]
-        raw = self._read_bytes(content, filename)
         stored_filename = f"{dataset_id}_{os.path.basename(filename)}"
         file_path = os.path.join(UPLOAD_DIR, stored_filename)
         with open(file_path, "wb") as file_handle:
             file_handle.write(raw)
         mapping = self.detect_mapping(frame)
-        validation = self.validate_frame(frame, mapping)
+        # Use sampled validation for large files to keep the upload response fast
+        validation = self.validate_frame(frame, mapping, sample=True)
         profile = self.profile_frame(frame, mapping, validation)
         with self._connect() as connection:
             connection.execute(
@@ -241,12 +262,24 @@ class DatasetService:
 
     def detect_mapping(self, frame):
         mappings = []
+        _numeric_fields = {"units_sold", "selling_price", "unit_cost", "revenue", "inventory", "discount", "competitor_price"}
         for column in frame.columns:
             normal = _normalise(column)
+            # Use only 25 rows for type-sniffing — fast and representative
             sample = frame[column].dropna().head(25)
-            sample_text = " ".join(sample.astype(str).tolist())
-            date_ratio = pd.to_datetime(sample, errors="coerce").notna().mean() if len(sample) else 0
-            numeric_ratio = pd.to_numeric(sample.astype(str).str.replace(r"[₹,$,]", "", regex=True), errors="coerce").notna().mean() if len(sample) else 0
+            if len(sample) == 0:
+                mappings.append({"source": str(column), "target": None, "target_label": "Unmapped", "confidence": 0, "detected": True})
+                continue
+            sample_str = sample.astype(str)
+            sample_text = " ".join(sample_str.tolist())
+            # Compute numeric ratio once (reused for both numeric-field and product_name checks)
+            numeric_clean = pd.to_numeric(sample_str.str.replace(r"[₹,$,]", "", regex=True), errors="coerce")
+            numeric_ratio = numeric_clean.notna().mean()
+            # Date check only if column name hints at dates or numeric_ratio is low
+            if "date" in normal or "time" in normal or numeric_ratio < 0.3:
+                date_ratio = pd.to_datetime(sample, errors="coerce").notna().mean()
+            else:
+                date_ratio = 0
             candidates = []
             for field, terms in SYNONYMS.items():
                 exact = normal in terms
@@ -254,7 +287,7 @@ class DatasetService:
                 score = 0.99 if exact else 0.84 if contains else 0
                 if field == "date" and date_ratio >= 0.8:
                     score = max(score, 0.78)
-                if field in {"units_sold", "selling_price", "unit_cost", "revenue", "inventory", "discount", "competitor_price"} and numeric_ratio >= 0.85:
+                if field in _numeric_fields and numeric_ratio >= 0.85:
                     score = max(score, 0.42)
                 if field == "product_name" and numeric_ratio < 0.25 and len(sample_text) > 0:
                     score = max(score, 0.34)
@@ -291,35 +324,67 @@ class DatasetService:
                     resolved[item["target"]] = item["source"]
         return resolved
 
-    def validate_frame(self, frame, mapping):
+    def validate_frame(self, frame, mapping, sample: bool = False):
+        """Validate a DataFrame against the resolved mapping.
+
+        Parameters
+        ----------
+        sample:
+            If True and the frame has more than _VALIDATION_SAMPLE rows, run
+            outlier detection on a random sample for speed. Full row/column
+            counts (missing, duplicates) are always computed on the full frame.
+        """
         mapped = self._mapping_dict(mapping)
         total = max(len(frame), 1)
+        # Full-frame counts (fast vectorised ops)
         missing = int(frame.isna().sum().sum())
         duplicates = int(frame.duplicated().sum())
         invalid_dates = invalid_prices = invalid_qty = negative_qty = negative_sales = outliers = 0
         if mapped.get("date") in frame:
             invalid_dates = int(pd.to_datetime(frame[mapped["date"]], errors="coerce").isna().sum())
+        # Pre-clean numeric columns once to avoid repeated regex in each field loop
+        _currency_re = r"[₹,$,]"
+        _numeric_cache: dict[str, pd.Series] = {}
+        def _get_numeric(source):
+            if source not in _numeric_cache:
+                _numeric_cache[source] = pd.to_numeric(
+                    frame[source].astype(str).str.replace(_currency_re, "", regex=True),
+                    errors="coerce"
+                )
+            return _numeric_cache[source]
+
         for field in ("selling_price", "unit_cost", "revenue", "competitor_price"):
             source = mapped.get(field)
             if source in frame:
-                numeric = pd.to_numeric(frame[source].astype(str).str.replace(r"[₹,$,]", "", regex=True), errors="coerce")
+                numeric = _get_numeric(source)
                 invalid_prices += int(numeric.isna().sum())
                 negative_sales += int((numeric < 0).sum())
         for field in ("units_sold", "inventory"):
             source = mapped.get(field)
             if source in frame:
-                numeric = pd.to_numeric(frame[source].astype(str).str.replace(r"[₹,$,]", "", regex=True), errors="coerce")
+                numeric = _get_numeric(source)
                 invalid_qty += int(numeric.isna().sum())
                 negative_qty += int((numeric < 0).sum())
+        # Outlier detection — use a sample for large frames to keep upload fast
+        outlier_frame = frame
+        if sample and len(frame) > _VALIDATION_SAMPLE:
+            outlier_frame = frame.sample(_VALIDATION_SAMPLE, random_state=42)
         for source in mapped.values():
             if source in frame:
-                numeric = pd.to_numeric(frame[source].astype(str).str.replace(r"[₹,$,]", "", regex=True), errors="coerce")
+                numeric = pd.to_numeric(
+                    outlier_frame[source].astype(str).str.replace(_currency_re, "", regex=True),
+                    errors="coerce"
+                )
                 values = numeric.dropna()
                 if len(values) >= 4:
                     q1, q3 = values.quantile(0.25), values.quantile(0.75)
                     iqr = q3 - q1
                     if iqr > 0:
-                        outliers += int(((values < q1 - 1.5 * iqr) | (values > q3 + 1.5 * iqr)).sum())
+                        raw_outliers = int(((values < q1 - 1.5 * iqr) | (values > q3 + 1.5 * iqr)).sum())
+                        # Scale back to full frame estimate if we sampled
+                        if sample and len(frame) > _VALIDATION_SAMPLE:
+                            raw_outliers = int(raw_outliers * len(frame) / _VALIDATION_SAMPLE)
+                        outliers += raw_outliers
         problems = duplicates + missing / max(len(frame.columns), 1) + invalid_dates + invalid_prices + invalid_qty + negative_qty + negative_sales + outliers * 0.5
         score = max(0, round(100 - problems / total * 100, 1))
         warnings = []
@@ -340,9 +405,11 @@ class DatasetService:
         row = self._get_row(dataset_id)
         if not row:
             return None
-        frame = self._read_frame(open(row["file_path"], "rb").read(), row["original_filename"])
+        with open(row["file_path"], "rb") as _fh:
+            raw = _fh.read()
+        frame = self._parse_raw(raw, row["original_filename"])
         mapping = json.loads(row["mapping_json"])
-        validation = self.validate_frame(frame, mapping)
+        validation = self.validate_frame(frame, mapping)  # full scan for explicit validate call
         profile = self.profile_frame(frame, mapping, validation)
         with self._connect() as connection:
             connection.execute("UPDATE datasets SET validation_json = ?, profile_json = ?, processing_status = ? WHERE dataset_id = ?", (_json(validation), _json(profile), "Validated", dataset_id))
@@ -352,7 +419,9 @@ class DatasetService:
         row = self._get_row(dataset_id)
         if not row:
             return None
-        frame = self._read_frame(open(row["file_path"], "rb").read(), row["original_filename"])
+        with open(row["file_path"], "rb") as _fh:
+            raw = _fh.read()
+        frame = self._parse_raw(raw, row["original_filename"])
         raw_mapping = mapping or json.loads(row["mapping_json"])
         resolved = self._mapping_dict(raw_mapping)
         display_mapping = [{"source": source, "target": target, "target_label": FIELD_LABELS[target], "confidence": next((item.get("confidence", 100) for item in raw_mapping if item.get("source") == source and item.get("target") == target), 100), "detected": True} for target, source in resolved.items()]
@@ -364,12 +433,12 @@ class DatasetService:
             raise ValueError("Map at least one recognised retail column before processing.")
         before_rows = len(clean)
         clean = clean.drop_duplicates().copy()
-        for field in ["date"]:
-            if field in clean:
-                clean[field] = pd.to_datetime(clean[field], errors="coerce")
+        if "date" in clean:
+            clean["date"] = pd.to_datetime(clean["date"], errors="coerce")
+        _currency_re = r"[₹,$,]"
         for field in ["units_sold", "selling_price", "unit_cost", "revenue", "inventory", "discount", "competitor_price"]:
             if field in clean:
-                clean[field] = pd.to_numeric(clean[field].astype(str).str.replace(r"[₹,$,]", "", regex=True), errors="coerce")
+                clean[field] = pd.to_numeric(clean[field].astype(str).str.replace(_currency_re, "", regex=True), errors="coerce")
         for field in ["product_id", "product_name", "category", "subcategory", "store_id", "promotion"]:
             if field in clean:
                 clean[field] = clean[field].astype("string").str.strip().replace({"": pd.NA, "nan": pd.NA})
@@ -389,15 +458,20 @@ class DatasetService:
             if field in clean:
                 clean.loc[clean[field] < 0, field] = np.nan
         capabilities = self._capabilities(clean)
-        serialised = clean.replace({pd.NA: None, np.nan: None}).copy()
+        # Serialise efficiently — avoid full .replace() on large frames by only converting date col
+        serialised = clean.copy()
         if "date" in serialised:
             serialised["date"] = serialised["date"].map(lambda value: value.strftime("%Y-%m-%d") if pd.notna(value) else None)
-        records = serialised.to_dict(orient="records")
-        validation = self.validate_frame(frame, display_mapping)
+        records = serialised.where(serialised.notna(), other=None).to_dict(orient="records")
+        # Reuse sampled validation for the process step as well (accurate enough)
+        validation = self.validate_frame(frame, display_mapping, sample=True)
         validation["rows_after_cleaning"] = len(clean)
         validation["duplicates_removed"] = before_rows - len(clean)
         validation["derived_fields"] = derived_fields
         profile = self.profile_frame(frame, display_mapping, validation)
+        # Invalidate the active records cache for this dataset
+        with _records_cache_lock:
+            _records_cache.pop(dataset_id, None)
         with self._connect() as connection:
             connection.execute("""UPDATE datasets SET mapping_json = ?, validation_json = ?, profile_json = ?, processed_records_json = ?, capabilities_json = ?, status = 'Processed', processing_status = 'Ready for activation' WHERE dataset_id = ?""", (_json(display_mapping), _json(validation), _json(profile), _json(records), _json(capabilities), dataset_id))
         return self.get_dataset(dataset_id)
@@ -424,17 +498,33 @@ class DatasetService:
         with self._connect() as connection:
             connection.execute("UPDATE datasets SET is_active = 0 WHERE is_active = 1")
             connection.execute("UPDATE datasets SET is_active = 1, status = 'Active', processing_status = 'Active dataset' WHERE dataset_id = ?", (dataset_id,))
+        # Warm the cache immediately so the first dashboard request is instant
+        with _records_cache_lock:
+            _records_cache.clear()   # evict any previously-active dataset
+        self.active_records()        # pre-load new active dataset into cache
         return self.get_dataset(dataset_id)
 
     # ---------- Active-dataset reads ----------
 
-    def active_records(self):
+    def active_records(self) -> pd.DataFrame:
+        """Return the active dataset's records as a DataFrame.
+
+        Results are cached in-process by dataset_id so repeated calls within
+        the same request (or across requests when the dataset hasn't changed)
+        skip the SQLite read and JSON deserialisation entirely.
+        """
         row = self._get_row()
         if not row or not row["processed_records_json"]:
             return pd.DataFrame()
+        dataset_id = row["dataset_id"]
+        with _records_cache_lock:
+            if dataset_id in _records_cache:
+                return _records_cache[dataset_id]
         frame = pd.DataFrame(json.loads(row["processed_records_json"]))
         if "date" in frame:
             frame["date"] = pd.to_datetime(frame["date"], errors="coerce")
+        with _records_cache_lock:
+            _records_cache[dataset_id] = frame
         return frame
 
     def active_capabilities(self):
