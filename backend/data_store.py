@@ -418,56 +418,93 @@ class DataStore:
         return store_obj
 
     def clean_uploaded_dataset(self, file_content, filename="dataset.csv"):
-        raw_rows = list(csv.DictReader(io.StringIO(file_content.strip()))) if file_content.strip() else []
-        total_rows = len(raw_rows)
-        seen, duplicates, missing, invalid_prices, negative_qty, invalid_dates, missing_ids = set(), 0, 0, 0, 0, 0, 0
-        numerical_values = []
-        for row in raw_rows:
-            signature = tuple(sorted((key, (value or "").strip()) for key, value in row.items()))
-            if signature in seen:
-                duplicates += 1
-            seen.add(signature)
-            values = {str(key).lower().replace(" ", "_"): (value or "").strip() for key, value in row.items()}
-            missing += sum(1 for value in values.values() if value == "")
-            if not any(values.get(key) for key in ("product_id", "productid", "sku", "product")):
-                missing_ids += 1
-            for key, value in values.items():
-                if any(token in key for token in ("price", "revenue", "cost")) and value:
-                    try:
-                        number = float(value.replace("₹", "").replace(",", ""))
-                        numerical_values.append(number)
-                        if number < 0:
-                            invalid_prices += 1
-                    except ValueError:
-                        invalid_prices += 1
-                if any(token in key for token in ("qty", "quantity", "units", "stock")) and value:
-                    try:
-                        if float(value) < 0:
-                            negative_qty += 1
-                    except ValueError:
-                        negative_qty += 1
-                if "date" in key and value:
-                    try:
-                        datetime.fromisoformat(value.replace("Z", "+00:00"))
-                    except ValueError:
-                        invalid_dates += 1
-        outliers = 0
-        if len(numerical_values) >= 4:
-            ordered = sorted(numerical_values)
-            q1, q3 = ordered[len(ordered) // 4], ordered[(len(ordered) * 3) // 4]
-            iqr = q3 - q1
-            if iqr:
-                outliers = sum(value < q1 - 1.5 * iqr or value > q3 + 1.5 * iqr for value in numerical_values)
+        if not file_content or not str(file_content).strip():
+            empty_logs = {
+                "quality_score": 100, "total_rows_processed": 0, "duplicates_removed": 0,
+                "missing_imputed": 0, "outliers_adjusted": 0, "invalid_prices": 0,
+                "negative_quantities": 0, "invalid_dates": 0, "missing_product_ids": 0,
+                "issues": [], "filename": filename, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "status": "Ready for modelling"
+            }
+            self.data_cleaning_logs = empty_logs
+            return empty_logs
+
+        try:
+            import pandas as pd
+            import numpy as np
+            # Vectorized fast CSV parsing
+            df = pd.read_csv(io.StringIO(file_content.strip()), low_memory=False)
+            total_rows = len(df)
+            duplicates = int(df.duplicated().sum())
+            missing = int(df.isna().sum().sum())
+            invalid_prices = 0
+            negative_qty = 0
+            invalid_dates = 0
+            missing_ids = 0
+
+            col_map = {col: str(col).lower().replace(" ", "_") for col in df.columns}
+            has_id = any(any(tok in c for tok in ("product_id", "productid", "sku", "product")) for c in col_map.values())
+            if not has_id:
+                missing_ids = total_rows
+
+            currency_re = r"[₹,$, ]"
+            numerical_values = []
+            for col, norm in col_map.items():
+                if any(tok in norm for tok in ("price", "revenue", "cost")):
+                    if pd.api.types.is_numeric_dtype(df[col]):
+                        nums = pd.to_numeric(df[col], errors="coerce")
+                    else:
+                        nums = pd.to_numeric(df[col].astype(str).str.replace(currency_re, "", regex=True), errors="coerce")
+                    invalid_prices += int(nums.isna().sum())
+                    invalid_prices += int((nums < 0).sum())
+                    numerical_values.extend(nums.dropna().tolist()[:5000])
+
+                elif any(tok in norm for tok in ("qty", "quantity", "units", "stock")):
+                    if pd.api.types.is_numeric_dtype(df[col]):
+                        nums = pd.to_numeric(df[col], errors="coerce")
+                    else:
+                        nums = pd.to_numeric(df[col].astype(str).str.replace(currency_re, "", regex=True), errors="coerce")
+                    negative_qty += int((nums < 0).sum())
+                    negative_qty += int(nums.isna().sum())
+
+                elif "date" in norm:
+                    invalid_dates += int(pd.to_datetime(df[col], errors="coerce").isna().sum())
+
+            outliers = 0
+            if len(numerical_values) >= 4:
+                arr = np.array(numerical_values)
+                q1, q3 = np.percentile(arr, 25), np.percentile(arr, 75)
+                iqr = q3 - q1
+                if iqr > 0:
+                    outliers = int(np.sum((arr < q1 - 1.5 * iqr) | (arr > q3 + 1.5 * iqr)))
+
+        except Exception:
+            # Fallback for unexpected formats
+            raw_rows = list(csv.DictReader(io.StringIO(file_content.strip()))) if file_content.strip() else []
+            total_rows = len(raw_rows)
+            duplicates = missing = invalid_prices = negative_qty = invalid_dates = missing_ids = outliers = 0
+            seen = set()
+            for row in raw_rows[:5000]:
+                sig = tuple(sorted((k, (v or "").strip()) for k, v in row.items()))
+                if sig in seen:
+                    duplicates += 1
+                seen.add(sig)
+                missing += sum(1 for v in row.values() if not v)
+
         issues = []
         checks = [
-            (duplicates, "duplicate record(s) were detected"), (missing, "missing field value(s) require imputation"),
-            (invalid_prices, "invalid price or cost value(s) require correction"), (negative_qty, "negative quantity value(s) were found"),
-            (invalid_dates, "invalid date value(s) were found"), (missing_ids, "row(s) are missing a product ID"),
+            (duplicates, "duplicate record(s) were detected"),
+            (missing, "missing field value(s) require imputation"),
+            (invalid_prices, "invalid price or cost value(s) require correction"),
+            (negative_qty, "negative quantity value(s) were found"),
+            (invalid_dates, "invalid date value(s) were found"),
+            (missing_ids, "row(s) are missing a product ID"),
             (outliers, "price/cost outlier(s) were flagged")
         ]
         for count, text in checks:
             if count:
                 issues.append({"count": count, "message": f"{count} {text}"})
+
         error_weight = duplicates * 0.6 + missing * 0.25 + invalid_prices * 2 + negative_qty * 2 + invalid_dates * 1.5 + missing_ids * 2 + outliers * 0.7
         quality = min(100, max(55, round(100 - (error_weight / max(total_rows, 1)) * 100, 1)))
         self.data_cleaning_logs = {
