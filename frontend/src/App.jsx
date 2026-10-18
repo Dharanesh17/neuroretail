@@ -6,6 +6,7 @@ import DataUploadModule from './components/DataUploadModule';
 import DynamicPricing from './components/DynamicPricing';
 import DemandForecast from './components/DemandForecast';
 import InventoryIntelligence from './components/InventoryIntelligence';
+import CustomerAnalytics from './components/CustomerAnalytics';
 import VoiceAssistantModal from './components/VoiceAssistantModal';
 import RealtimeAlerts from './components/RealtimeAlerts';
 import {
@@ -21,8 +22,8 @@ const makeIdleStatus = () => Object.fromEntries(PIPELINE_IDS.map(id => [id, 'idl
 
 const titles = {
   overview: 'Executive Dashboard', upload: 'Data Upload', forecast: 'Demand Forecast', pricing: 'Dynamic Pricing',
-  inventory: 'Inventory Optimization', scenario: 'What-if Simulator',
-  models: 'Model Performance', quality: 'Data Quality', products: 'Products',
+  inventory: 'Inventory Optimization', customers: 'Customer Analytics',
+  scenario: 'What-if Simulator', models: 'Model Performance', quality: 'Data Quality', products: 'Products',
   alerts: 'Alerts', reports: 'Reports & Export', audit: 'Activity Trail', users: 'Users & Roles', settings: 'Settings',
   assistant: 'NeuroRetail Assistant'
 };
@@ -102,6 +103,7 @@ export default function App() {
       case 'forecast': return <DemandForecast products={products} />;
       case 'pricing': return <DynamicPricing products={products} onPriceUpdated={loadData} />;
       case 'inventory': return <InventoryIntelligence products={products} onReorderSuccess={loadData} />;
+      case 'customers': return <CustomerAnalytics />;
       case 'scenario': return <ScenarioSimulator products={products} />;
       case 'models': return <ModelPerformanceCenter />;
       case 'quality': return <DataQualityMonitor onNavigate={setActiveTab} />;

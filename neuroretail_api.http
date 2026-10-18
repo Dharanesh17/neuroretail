@@ -1,0 +1,143 @@
+### ================================================================
+### NeuroRetail AI Platform - API Test Suite
+### Compatible with: Thunder Client, REST Client (VS Code), Postman
+### Base URL: http://localhost:5000
+### ================================================================
+
+@baseUrl = http://localhost:5000/api
+
+### 1. Health & Service Status
+GET {{baseUrl}}/health
+Content-Type: application/json
+
+### 2. Executive Dashboard Overview
+GET {{baseUrl}}/executive/dashboard
+Content-Type: application/json
+
+### 3. Dashboard KPI Summary
+GET {{baseUrl}}/dashboard/summary
+Content-Type: application/json
+
+### 4. Product Catalogue
+GET {{baseUrl}}/products
+Content-Type: application/json
+
+### 5. Single Product Detail (PROD-101)
+GET {{baseUrl}}/products/PROD-101
+Content-Type: application/json
+
+### 6. Dynamic Pricing Calculation (All SKUs)
+POST {{baseUrl}}/pricing/dynamic-calculate
+Content-Type: application/json
+
+{
+  "is_peak_hour": false
+}
+
+### 7. Dynamic Pricing Calculation with Peak Hour Surge (PROD-101)
+POST {{baseUrl}}/pricing/dynamic-calculate
+Content-Type: application/json
+
+{
+  "product_id": "PROD-101",
+  "is_peak_hour": true
+}
+
+### 8. Update Shelf Price for a SKU
+POST {{baseUrl}}/pricing/update
+Content-Type: application/json
+
+{
+  "product_id": "PROD-101",
+  "new_price": 21999.00
+}
+
+### 9. Demand Forecast (30 Days)
+GET {{baseUrl}}/forecast/PROD-101?days=30
+Content-Type: application/json
+
+### 10. Inventory Optimization & Safety Stock
+GET {{baseUrl}}/inventory/status
+Content-Type: application/json
+
+### 11. Inventory Reorder & Auto-PO Generation
+POST {{baseUrl}}/inventory/reorder
+Content-Type: application/json
+
+{
+  "product_id": "PROD-101",
+  "quantity": 30
+}
+
+### 12. What-if Scenario Simulation
+POST {{baseUrl}}/scenario/simulate
+Content-Type: application/json
+
+{
+  "product_id": "PROD-101",
+  "price": 20999.00,
+  "promotion_pct": 10.0,
+  "inventory": 25,
+  "competitor_price": 20499.00
+}
+
+### 13. AI Decision Queue & Recommendations
+GET {{baseUrl}}/decision/recommendations
+Content-Type: application/json
+
+### 14. Model Performance Benchmark (MAPE, RMSE, R²)
+GET {{baseUrl}}/model-performance
+Content-Type: application/json
+
+### 15. ML Multi-Model Comparison
+GET {{baseUrl}}/ml/compare
+Content-Type: application/json
+
+### 16. Data Quality & Validation Checks
+GET {{baseUrl}}/data-quality
+Content-Type: application/json
+
+### 17. Upload Data Cleaning & Validation Test
+POST {{baseUrl}}/upload/clean
+Content-Type: application/json
+
+{
+  "filename": "sales_sample.csv",
+  "content": "Date,Product_ID,Product_Name,Category,Units_Sold,Price_Charged_INR\n2025-01-01,PROD-101,NeuroPulse SmartWatch Pro,Wearables,28,21499.00\n2025-01-02,PROD-102,AcousticSense ANC Headphones,Audio,45,13999.00"
+}
+
+### 18. Operational Alerts Center
+GET {{baseUrl}}/alerts
+Content-Type: application/json
+
+### 19. Activity Trail & Audit Log
+GET {{baseUrl}}/audit-logs
+Content-Type: application/json
+
+### 20. Users & Roles (RBAC)
+GET {{baseUrl}}/users
+Content-Type: application/json
+
+### 21. Switch Active User Role
+POST {{baseUrl}}/auth/switch-role
+Content-Type: application/json
+
+{
+  "role": "Store Manager"
+}
+
+### 22. Store Multi-Location Settings
+GET {{baseUrl}}/stores
+Content-Type: application/json
+
+### 23. Executive Report Generation
+GET {{baseUrl}}/reports
+Content-Type: application/json
+
+### 24. AI Retail Assistant Query
+POST {{baseUrl}}/chat
+Content-Type: application/json
+
+{
+  "query": "What is our current revenue and top stockout risk?"
+}

@@ -16,13 +16,19 @@
   }
 
   body {
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
     @apply bg-slate-50 text-slate-900 font-sans antialiased selection:bg-blue-500 selection:text-white dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  h1, h2, h3, .font-heading {
+    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.02em;
   }
 }
 
 .corp-card {
-  @apply bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-lg shadow-card transition-all duration-200;
+  @apply bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl shadow-card transition-all duration-200;
 }
 
 .corp-card-hover {
@@ -30,11 +36,32 @@
 }
 
 .glass-panel {
-  @apply rounded-lg border border-slate-200 bg-white text-slate-900 shadow-card dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100;
+  @apply rounded-xl border border-slate-200/80 bg-white/90 backdrop-blur-md text-slate-900 shadow-card dark:border-slate-800/80 dark:bg-slate-900/80 dark:text-slate-100;
 }
 
 .glass-card-hover {
   @apply transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-card-hover dark:hover:border-blue-500/50;
+}
+
+.glass-card-glow {
+  @apply relative overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/50 p-5 shadow-sm transition-all duration-300 hover:border-blue-300 hover:shadow-md dark:border-slate-800/80 dark:from-slate-900 dark:to-slate-950/80 dark:hover:border-blue-500/40;
+}
+
+.glow-pill-emerald {
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+}
+
+.glow-pill-blue {
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.25);
+}
+
+.pulse-badge {
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.08); }
 }
 
 .glass-panel h1,

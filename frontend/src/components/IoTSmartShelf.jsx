@@ -19,7 +19,7 @@ export default function IoTSmartShelf({ onShelfUpdated }) {
     setUpdatingId(shelfId);
     await api.decrementShelf(shelfId, 1);
     await fetchShelves();
-    onShelfUpdated();
+    onShelfUpdated?.();
     setUpdatingId(null);
   };
 

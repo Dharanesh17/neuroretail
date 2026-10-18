@@ -7,11 +7,14 @@ import {
 } from 'lucide-react';
 
 const groups = [
-  { label: 'Overview', items: [{ id: 'overview', label: 'Executive Dashboard', icon: LayoutDashboard }] },
+  { label: 'Overview', items: [
+    { id: 'overview', label: 'Executive Dashboard', icon: LayoutDashboard },
+  ] },
   { label: 'Intelligence', items: [
     { id: 'forecast', label: 'Demand Forecast', icon: LineChart },
     { id: 'pricing', label: 'Dynamic Pricing', icon: Tags },
     { id: 'inventory', label: 'Inventory Optimization', icon: PackageCheck },
+    { id: 'customers', label: 'Customer Analytics', icon: Users },
   ] },
   { label: 'Analysis', items: [
     { id: 'scenario', label: 'What-if Simulator', icon: SlidersHorizontal },

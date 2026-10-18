@@ -82,7 +82,21 @@ export function ExecutiveDashboard({ summary, onNavigate }) {
 
   return (
     <div className="space-y-5">
-      <PageHeader eyebrow="Executive overview" title="Retail intelligence at a glance" description="A management view of what is happening, why it is happening, and which operational decision should be made next." action={<button type="button" className={buttonClass} onClick={() => onNavigate('recommendations')}><BrainCircuit className="h-4 w-4" />Review AI actions</button>} />
+      <PageHeader
+        eyebrow="Executive overview"
+        title="Retail intelligence at a glance"
+        description="A management view of what is happening, why it is happening, and which operational decision should be made next."
+        action={
+          <button
+            type="button"
+            className={buttonClass}
+            onClick={() => onNavigate('pricing')}
+          >
+            <BrainCircuit className="h-4 w-4" />
+            Dynamic Pricing
+          </button>
+        }
+      />
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{kpis.map(([label, value, note, icon, tone]) => <MetricCard key={label} label={label} value={value} note={note} icon={icon} tone={tone} />)}</section>
       <section className="grid gap-5 xl:grid-cols-3">
         <div className={`${cardClass} p-5 xl:col-span-2`}>
@@ -97,7 +111,7 @@ export function ExecutiveDashboard({ summary, onNavigate }) {
         </div>
       </section>
       <section className={`${cardClass} p-5`}>
-        <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-black text-slate-950 dark:text-white">Priority decision queue</h3><p className="mt-1 text-sm text-slate-500">Explainable decisions prepared from demand, price, and inventory signals.</p></div><button type="button" onClick={() => onNavigate('recommendations')} className="text-sm font-bold text-blue-700 hover:text-blue-800">Open recommendation center <ArrowRight className="inline h-4 w-4" /></button></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-black text-slate-950 dark:text-white">Priority decision queue</h3><p className="mt-1 text-sm text-slate-500">Explainable decisions prepared from demand, price, and inventory signals.</p></div><button type="button" onClick={() => onNavigate('pricing')} className="text-sm font-bold text-blue-700 hover:text-blue-800">Dynamic pricing engine <ArrowRight className="inline h-4 w-4" /></button></div>
         <div className="mt-4 grid gap-3 lg:grid-cols-3">{recommendations.length ? recommendations.map((item) => <div key={item.id} className="rounded-lg border border-slate-200 p-4 dark:border-slate-800"><div className="flex items-center justify-between gap-2"><span className={`rounded px-2 py-1 text-[10px] font-black uppercase ${item.priority === 'High' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>{item.priority} priority</span><span className="text-xs font-bold text-slate-400">{item.confidence}% confidence</span></div><p className="mt-3 font-black text-slate-950 dark:text-white">{item.product}</p><p className="mt-1 text-sm font-semibold text-blue-700">{item.recommendation}</p><p className="mt-2 text-xs text-slate-500">Expected profit: {currency(item.expected_profit)}</p></div>) : <p className="text-sm text-slate-500">Decision recommendations will appear here when the API is online.</p>}</div>
       </section>
     </div>

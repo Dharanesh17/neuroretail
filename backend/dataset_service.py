@@ -605,7 +605,9 @@ class DatasetService:
         frame["day_index"] = (frame["date"] - frame["date"].min()).dt.days
         frame["day_of_week"] = frame["date"].dt.dayofweek
         from sklearn.linear_model import Ridge
-        model = Ridge(alpha=0.5).fit(frame[["day_index", "day_of_week"]], frame["units_sold"])
+        X_vals = frame[["day_index", "day_of_week"]].values
+        y_vals = frame["units_sold"].values
+        model = Ridge(alpha=0.5).fit(X_vals, y_vals)
         std_dev = max(float(frame["units_sold"].std() or 0), 0)
         last_date = frame["date"].max()
         last_index = frame["day_index"].max()
@@ -615,7 +617,7 @@ class DatasetService:
             predicted = max(0, float(model.predict([[last_index + increment, date.dayofweek]])[0]))
             forecast_rows.append({"date": date.strftime("%Y-%m-%d"), "forecast": round(predicted, 2), "lower_bound": round(max(0, predicted - 1.2 * std_dev), 2), "upper_bound": round(predicted + 1.2 * std_dev, 2), "actual": None})
         history = [{"date": row.date.strftime("%Y-%m-%d"), "actual": round(float(row.units_sold), 2), "forecast": round(float(model.predict([[row.day_index, row.day_of_week]])[0]), 2)} for row in frame.tail(30).itertuples()]
-        return {"available": True, "product_id": product_id, "forecast_days": len(forecast_rows), "total_predicted_demand": round(sum(item["forecast"] for item in forecast_rows), 2), "average_daily_demand": round(np.mean([item["forecast"] for item in forecast_rows]), 2), "historical_data": history, "forecast_data": forecast_rows, "model_r2_score": round(float(model.score(frame[["day_index", "day_of_week"]], frame["units_sold"])), 3)}
+        return {"available": True, "product_id": product_id, "forecast_days": len(forecast_rows), "total_predicted_demand": round(sum(item["forecast"] for item in forecast_rows), 2), "average_daily_demand": round(np.mean([item["forecast"] for item in forecast_rows]), 2), "historical_data": history, "forecast_data": forecast_rows, "model_r2_score": round(float(model.score(X_vals, y_vals)), 3)}
 
     def pricing(self, product_id):
         capability = self.active_capabilities().get("pricing", {})

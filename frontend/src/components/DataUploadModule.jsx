@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   AlertCircle, BarChart3, Brain, CheckCircle2, ChevronRight,
@@ -15,13 +16,13 @@ const SAMPLE_CSV = `Date,Product_ID,Product_Name,Category,Units_Sold,Price_Charg
 
 /* ─── 7 pipeline stages ─────────────────────────────────────────── */
 const PIPELINE = [
-  { id: 'upload',   icon: UploadCloud,    label: 'File Upload',         desc: 'Uploading dataset to server…'            },
-  { id: 'validate', icon: ShieldCheck,    label: 'Schema Validation',   desc: 'Checking columns and data types…'        },
-  { id: 'clean',    icon: Filter,         label: 'Data Cleaning',       desc: 'Removing duplicates & imputing missing…' },
-  { id: 'map',      icon: Wand2,          label: 'Column Mapping',      desc: 'Auto-mapping fields to AI schema…'       },
-  { id: 'process',  icon: FlaskConical,   label: 'Data Processing',     desc: 'Normalising and encoding features…'      },
-  { id: 'train',    icon: Brain,          label: 'AI Model Training',   desc: 'Training demand & pricing models…'       },
-  { id: 'activate', icon: LayoutDashboard,label: 'Dashboard Activation',desc: 'Publishing results to dashboard…'       },
+  { id: 'upload', icon: UploadCloud, label: 'File Upload', desc: 'Uploading dataset to server…' },
+  { id: 'validate', icon: ShieldCheck, label: 'Schema Validation', desc: 'Checking columns and data types…' },
+  { id: 'clean', icon: Filter, label: 'Data Cleaning', desc: 'Removing duplicates & imputing missing…' },
+  { id: 'map', icon: Wand2, label: 'Column Mapping', desc: 'Auto-mapping fields to AI schema…' },
+  { id: 'process', icon: FlaskConical, label: 'Data Processing', desc: 'Normalising and encoding features…' },
+  { id: 'train', icon: Brain, label: 'AI Model Training', desc: 'Training demand & pricing models…' },
+  { id: 'activate', icon: LayoutDashboard, label: 'Dashboard Activation', desc: 'Publishing results to dashboard…' },
 ];
 
 const STATUS = { idle: 'idle', running: 'running', done: 'done', error: 'error' };
@@ -45,41 +46,37 @@ function parsePreview(text) {
 function PipelineRow({ stage, status, detail, progress }) {
   const Icon = stage.icon;
   const isRunning = status === STATUS.running;
-  const isDone    = status === STATUS.done;
-  const isError   = status === STATUS.error;
+  const isDone = status === STATUS.done;
+  const isError = status === STATUS.error;
   const isPending = status === STATUS.idle;
 
   return (
-    <div className={`flex items-start gap-4 rounded-xl border p-4 transition-all duration-500 ${
-      isRunning ? 'border-blue-300 bg-blue-50/80 shadow-sm dark:border-blue-800 dark:bg-blue-950/40' :
-      isDone    ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30' :
-      isError   ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30' :
-                  'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950'
-    }`}>
-      {/* icon bubble */}
-      <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm ${
-        isRunning ? 'bg-blue-600' : isDone ? 'bg-green-600' : isError ? 'bg-red-500' : 'bg-slate-300 dark:bg-slate-700'
+    <div className={`flex items-start gap-4 rounded-xl border p-4 transition-all duration-500 ${isRunning ? 'border-blue-300 bg-blue-50/80 shadow-sm dark:border-blue-800 dark:bg-blue-950/40' :
+        isDone ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30' :
+          isError ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30' :
+            'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950'
       }`}>
+      {/* icon bubble */}
+      <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm ${isRunning ? 'bg-blue-600' : isDone ? 'bg-green-600' : isError ? 'bg-red-500' : 'bg-slate-300 dark:bg-slate-700'
+        }`}>
         {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> :
-         isDone    ? <CheckCircle2 className="h-4 w-4" /> :
-         isError   ? <AlertCircle className="h-4 w-4" /> :
-                     <Icon className="h-4 w-4" />}
+          isDone ? <CheckCircle2 className="h-4 w-4" /> :
+            isError ? <AlertCircle className="h-4 w-4" /> :
+              <Icon className="h-4 w-4" />}
       </span>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <p className={`text-sm font-black ${
-            isRunning ? 'text-blue-700 dark:text-blue-300' :
-            isDone    ? 'text-green-700 dark:text-green-300' :
-            isError   ? 'text-red-700 dark:text-red-300' :
-                        'text-slate-400 dark:text-slate-600'
-          }`}>{stage.label}</p>
+          <p className={`text-sm font-black ${isRunning ? 'text-blue-700 dark:text-blue-300' :
+              isDone ? 'text-green-700 dark:text-green-300' :
+                isError ? 'text-red-700 dark:text-red-300' :
+                  'text-slate-400 dark:text-slate-600'
+            }`}>{stage.label}</p>
           {isDone && <span className="rounded-md bg-green-100 px-2 py-0.5 text-[10px] font-black text-green-700 dark:bg-green-900 dark:text-green-200">DONE</span>}
           {isError && <span className="rounded-md bg-red-100 px-2 py-0.5 text-[10px] font-black text-red-700 dark:bg-red-900 dark:text-red-200">ERROR</span>}
         </div>
-        <p className={`mt-0.5 text-xs font-medium ${
-          isRunning || isDone ? 'text-slate-600 dark:text-slate-400' : 'text-slate-400 dark:text-slate-600'
-        }`}>{isRunning || isDone || isError ? (detail || stage.desc) : stage.desc}</p>
+        <p className={`mt-0.5 text-xs font-medium ${isRunning || isDone ? 'text-slate-600 dark:text-slate-400' : 'text-slate-400 dark:text-slate-600'
+          }`}>{isRunning || isDone || isError ? (detail || stage.desc) : stage.desc}</p>
 
         {isRunning && typeof progress === 'number' && (
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-900">
@@ -192,8 +189,8 @@ export default function DataUploadModule({
 
   const handleDownloadTemplate = () => {
     const blob = new Blob([SAMPLE_CSV], { type: 'text/csv' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
     a.href = url; a.download = 'neuroretail_template.csv'; a.click();
     URL.revokeObjectURL(url);
   };
@@ -211,8 +208,8 @@ export default function DataUploadModule({
     setStageStatus(makeIdleStatus());
 
     const fileContent = content || SAMPLE_CSV;
-    const fname       = filename || 'reference_doc.csv';
-    let dsId          = null;
+    const fname = filename || 'reference_doc.csv';
+    let dsId = null;
 
     try {
       /* ── STAGE 1: Upload via FormData multipart (much faster than JSON) ── */
@@ -285,7 +282,7 @@ export default function DataUploadModule({
           const apiClean = await res.json();
           if (apiClean) cleanResult = apiClean;
         }
-      } catch {}
+      } catch { }
       if (!cleanResult) {
         cleanResult = { quality_score: 97, duplicates_removed: 14, missing_imputed: 6, outliers_adjusted: 3, total_rows_processed: 1420, invalid_prices: 0 };
       }
@@ -333,7 +330,7 @@ export default function DataUploadModule({
         try {
           const res = await fetch('/api/ai/retrain', { method: 'POST' });
           if (res.ok) trainResult = await res.json();
-        } catch {}
+        } catch { }
       }
       await animateProgress('train', 85, 100, 40);
       const accuracy = trainResult?.metrics?.accuracy ?? trainResult?.training?.mape
@@ -350,7 +347,7 @@ export default function DataUploadModule({
       }
       await animateProgress('activate', 20, 90, 80);
       if (activatePromise) await activatePromise;
-      try { await onDataCalibrated?.(); } catch {}
+      try { await onDataCalibrated?.(); } catch { }
       await animateProgress('activate', 90, 100, 30);
       setStage('activate', STATUS.done, 'Live! Executive Dashboard updated with new data.', 100);
 
@@ -381,7 +378,7 @@ export default function DataUploadModule({
   };
 
   const completedCount = Object.values(stageStatus).filter(v => v === STATUS.done).length;
-  const overallPct     = Math.round((completedCount / PIPELINE.length) * 100);
+  const overallPct = Math.round((completedCount / PIPELINE.length) * 100);
 
   return (
     <div className="space-y-6">
@@ -465,9 +462,8 @@ export default function DataUploadModule({
             <div
               onDrop={handleDrop}
               onDragOver={e => e.preventDefault()}
-              className={`relative mt-4 flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition ${
-                file ? 'border-blue-400 bg-blue-50/60 dark:bg-blue-950/30' : 'border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/30 dark:border-slate-700 dark:bg-slate-950'
-              }`}
+              className={`relative mt-4 flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition ${file ? 'border-blue-400 bg-blue-50/60 dark:bg-blue-950/30' : 'border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/30 dark:border-slate-700 dark:bg-slate-950'
+                }`}
             >
               <input
                 type="file"

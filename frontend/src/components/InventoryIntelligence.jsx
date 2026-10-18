@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PackageCheck, AlertTriangle, TrendingDown, CheckCircle2, RefreshCcw } from 'lucide-react';
 import { api } from '../api/client';
+import IoTSmartShelf from './IoTSmartShelf';
 
 export default function InventoryIntelligence({ products, onReorderSuccess }) {
   const [inventoryList, setInventoryList] = useState([]);
@@ -21,7 +22,7 @@ export default function InventoryIntelligence({ products, onReorderSuccess }) {
     const res = await api.reorderStock(prodId, qty || 50);
     setReorderSuccessMsg(`Order ${res.po_number} placed for ${qty || 50} units!`);
     await fetchInventory();
-    onReorderSuccess();
+    onReorderSuccess?.();
     setReorderingId(null);
     setTimeout(() => setReorderSuccessMsg(''), 4000);
   };
@@ -162,6 +163,9 @@ export default function InventoryIntelligence({ products, onReorderSuccess }) {
           </table>
         </div>
       </div>
+
+      {/* Realtime Smart Shelf IoT Telemetry */}
+      <IoTSmartShelf onShelfUpdated={fetchInventory} />
     </div>
   );
 }
