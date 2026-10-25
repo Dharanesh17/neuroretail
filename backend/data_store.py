@@ -471,8 +471,9 @@ class DataStore:
                     invalid_dates += int(pd.to_datetime(df[col], errors="coerce").isna().sum())
 
             outliers = 0
-            if len(numerical_values) >= 4:
-                arr = np.array(numerical_values)
+            finite_nums = [float(v) for v in numerical_values if v is not None and np.isfinite(v)]
+            if len(finite_nums) >= 4:
+                arr = np.array(finite_nums)
                 q1, q3 = np.percentile(arr, 25), np.percentile(arr, 75)
                 iqr = q3 - q1
                 if iqr > 0:

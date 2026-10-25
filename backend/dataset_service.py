@@ -801,11 +801,14 @@ class DatasetService:
             frame["month"] = frame["date"].dt.month
             features = ["day_index", "day_of_week", "month"]
             if "selling_price" in frame and frame["selling_price"].notna().sum() >= 8:
-                frame["selling_price"] = pd.to_numeric(frame["selling_price"], errors="coerce").fillna(frame["selling_price"].median())
+                sp_series = pd.to_numeric(frame["selling_price"], errors="coerce")
+                med = sp_series.median()
+                frame["selling_price"] = sp_series.fillna(0.0 if pd.isna(med) else med)
                 features.append("selling_price")
             if "product_id" in frame:
                 frame["product_code"] = pd.factorize(frame["product_id"])[0]
                 features.append("product_code")
+            frame[features] = frame[features].fillna(0)
             # Sub-sample up to 2500 rows for lightning-fast training (<200ms) with strong generalization
             train_frame = frame if len(frame) <= 2500 else frame.sample(2500, random_state=42)
             x_train, x_test, y_train, y_test = train_test_split(
