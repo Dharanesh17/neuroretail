@@ -258,7 +258,6 @@ major_project01/
 | Vite binding to IPv6 only on Windows | `host: true` set in `vite.config.js` |
 | Slow data upload (large CSV sent as JSON string) | Stage 1 now uses `FormData` multipart + `XMLHttpRequest` with real `upload.onprogress` tracking |
 | Upload pipeline state lost when switching dashboards | All pipeline state lifted to `App.jsx`; `DataUploadModule` receives it via props — state survives navigation |
-
 ---
 
 *Built as an enterprise-grade final-year AI project. All ML models, pricing engines, and data flows follow production-pattern implementations.*
