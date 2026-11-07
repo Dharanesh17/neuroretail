@@ -24,9 +24,23 @@ SQLITE_FILE = os.path.join(ROOT, "neuroretail.db")
 UPLOAD_DIR = os.path.join(ROOT, "uploads")
 MODEL_DIR = os.path.join(ROOT, "models")
 
-# ---- In-process cache for the active dataset's parsed DataFrame ----
+# ---- In-process caches for high-frequency active dataset queries ----
 _records_cache: dict[str, pd.DataFrame] = {}
+_product_slices_cache: dict[str, dict[str, pd.DataFrame]] = {}
+_products_cache: dict[str, list] = {}
+_inventory_cache: dict[str, dict] = {}
+_analytics_cache: dict[str, dict] = {}
+_recommendations_cache: dict[str, dict] = {}
 _records_cache_lock = Lock()
+
+def clear_active_dataset_caches():
+    with _records_cache_lock:
+        _records_cache.clear()
+        _product_slices_cache.clear()
+        _products_cache.clear()
+        _inventory_cache.clear()
+        _analytics_cache.clear()
+        _recommendations_cache.clear()
 
 # ---- In-process cache for uploaded raw DataFrames during upload/validate/process ----
 _raw_frame_cache: dict[str, pd.DataFrame] = {}
@@ -522,8 +536,7 @@ class DatasetService:
             connection.execute("UPDATE datasets SET is_active = 0 WHERE is_active = 1")
             connection.execute("UPDATE datasets SET is_active = 1, status = 'Active', processing_status = 'Active dataset' WHERE dataset_id = ?", (dataset_id,))
         # Warm the cache immediately so the first dashboard request is instant
-        with _records_cache_lock:
-            _records_cache.clear()   # evict any previously-active dataset
+        clear_active_dataset_caches()
         self.active_records()        # pre-load new active dataset into cache
         return self.get_dataset(dataset_id)
 
@@ -555,6 +568,13 @@ class DatasetService:
         return active.get("capabilities", {}) if active else {}
 
     def get_products(self):
+        row = self._get_row()
+        dataset_id = row["dataset_id"] if row else ""
+        if dataset_id:
+            with _records_cache_lock:
+                if dataset_id in _products_cache:
+                    return _products_cache[dataset_id]
+
         frame = self.active_records()
         if frame.empty or "product_name" not in frame:
             return []
@@ -581,25 +601,40 @@ class DatasetService:
                 "demand_score": round(float(avg_units / max_demand * 100), 1) if avg_units is not None and max_demand else 0,
                 "data_fields": [field for field in ("selling_price", "unit_cost", "competitor_price", "inventory") if field in group and group[field].notna().any()]
             })
+        if dataset_id:
+            with _records_cache_lock:
+                _products_cache[dataset_id] = products
         return products
 
     def get_product(self, product_id):
-        return next((product for product in self.get_products() if product["id"] == product_id), None)
+        return next((product for product in self.get_products() if str(product["id"]) == str(product_id)), None)
 
     def _product_frame(self, product_id):
+        row = self._get_row()
+        dataset_id = row["dataset_id"] if row else ""
+        if dataset_id:
+            with _records_cache_lock:
+                if dataset_id in _product_slices_cache:
+                    return _product_slices_cache[dataset_id].get(str(product_id), pd.DataFrame())
+
         frame = self.active_records()
         if frame.empty:
             return frame
-        if "product_id" in frame:
-            return frame[frame["product_id"].astype(str) == str(product_id)].copy()
-        product = self.get_product(product_id)
-        return frame[frame["product_name"] == product["name"]].copy() if product else pd.DataFrame()
+        group_column = "product_id" if "product_id" in frame else "product_name"
+        slices = {str(k): g for k, g in frame.groupby(group_column)}
+        if dataset_id:
+            with _records_cache_lock:
+                _product_slices_cache[dataset_id] = slices
+        return slices.get(str(product_id), pd.DataFrame())
 
     def forecast(self, product_id, days=30):
         capability = self.active_capabilities().get("forecasting", {})
         if not capability.get("available"):
             return {"available": False, "reason": capability.get("reason", "No active dataset is available."), "historical_data": [], "forecast_data": []}
-        frame = self._product_frame(product_id).dropna(subset=["date", "units_sold"]).sort_values("date")
+        p_frame = self._product_frame(product_id)
+        if p_frame.empty or not {"date", "units_sold"}.issubset(p_frame.columns):
+            return {"available": False, "reason": "This product needs at least two valid dated sales records for forecasting.", "historical_data": [], "forecast_data": []}
+        frame = p_frame.dropna(subset=["date", "units_sold"]).sort_values("date")
         if len(frame) < 2:
             return {"available": False, "reason": "This product needs at least two valid dated sales records for forecasting.", "historical_data": [], "forecast_data": []}
         frame["day_index"] = (frame["date"] - frame["date"].min()).dt.days
@@ -623,7 +658,10 @@ class DatasetService:
         capability = self.active_capabilities().get("pricing", {})
         if not capability.get("available"):
             return {"available": False, "reason": capability.get("reason", "No active dataset is available.")}
-        frame = self._product_frame(product_id).dropna(subset=["selling_price", "units_sold"])
+        p_frame = self._product_frame(product_id)
+        if p_frame.empty or not {"selling_price", "units_sold"}.issubset(p_frame.columns):
+            return {"available": False, "reason": "This product has no price or sales records in the active dataset."}
+        frame = p_frame.dropna(subset=["selling_price", "units_sold"])
         if len(frame) < 2 or frame["selling_price"].nunique() < 2:
             return {"available": False, "reason": "This product needs sales at two or more historical prices before a recommendation can be calculated."}
         frame["observed_revenue"] = frame["revenue"] if "revenue" in frame else frame["selling_price"] * frame["units_sold"]
@@ -644,15 +682,33 @@ class DatasetService:
         capability = self.active_capabilities().get("inventory", {})
         if not capability.get("available"):
             return {"available": False, "reason": capability.get("reason", "No active dataset is available."), "items": []}
+        row = self._get_row()
+        dataset_id = row["dataset_id"] if row else ""
+        if dataset_id:
+            with _records_cache_lock:
+                if dataset_id in _inventory_cache:
+                    return _inventory_cache[dataset_id]
+
+        frame = self.active_records()
+        group_column = "product_id" if "product_id" in frame else "product_name"
+        stats_map = {}
+        if {"date", "units_sold"}.issubset(frame.columns) and not frame.empty:
+            valid_sales = frame.dropna(subset=["units_sold"])
+            if not valid_sales.empty:
+                grouped = valid_sales.groupby(group_column)["units_sold"]
+                means = grouped.mean()
+                stds = grouped.std().fillna(0)
+                for k in means.index:
+                    stats_map[str(k)] = (float(means[k]), float(stds[k]))
+
         items = []
         for product in self.get_products():
-            frame = self._product_frame(product["id"])
             current_stock = product["stock"]
             if current_stock is None:
                 continue
-            if {"date", "units_sold"}.issubset(frame.columns):
-                daily = frame.dropna(subset=["units_sold"])["units_sold"].mean()
-                deviation = frame.dropna(subset=["units_sold"])["units_sold"].std() or 0
+            key = str(product["id"] if "product_id" in frame else product["name"])
+            if key in stats_map:
+                daily, deviation = stats_map[key]
                 safety = float(1.65 * deviation * np.sqrt(7))
                 reorder_point = float(daily * 7 + safety)
                 target = float(daily * 21 + safety)
@@ -667,9 +723,20 @@ class DatasetService:
             else:
                 status, suggested = "OPTIMAL", 0
             items.append({"product_id": product["id"], "name": product["name"], "category": product["category"], "stock": current_stock, "min_stock": round(reorder_point, 1) if reorder_point is not None else None, "max_stock": round(target, 1) if target is not None else None, "status": status, "suggested_reorder_qty": suggested, "recommended_stock": round(target, 1) if target is not None else None, "safety_stock": round(safety, 1) if safety is not None else None, "days_of_cover": round(current_stock / daily, 1) if daily else None, "unit_cost": product["unit_cost"]})
-        return {"available": True, "items": items}
+        result = {"available": True, "items": items}
+        if dataset_id:
+            with _records_cache_lock:
+                _inventory_cache[dataset_id] = result
+        return result
 
     def analytics(self):
+        row = self._get_row()
+        dataset_id = row["dataset_id"] if row else ""
+        if dataset_id:
+            with _records_cache_lock:
+                if dataset_id in _analytics_cache:
+                    return _analytics_cache[dataset_id]
+
         frame = self.active_records()
         active = self.get_active_dataset()
         if not active:
@@ -692,7 +759,11 @@ class DatasetService:
         if "date" in frame and "revenue" in frame:
             for date, group in frame.dropna(subset=["date", "revenue"]).groupby(frame.dropna(subset=["date", "revenue"])["date"].dt.strftime("%Y-%m-%d")):
                 trend.append({"period": date, "revenue": round(float(group["revenue"].sum()), 2)})
-        return {"available": True, "active_dataset": active, "total_revenue": round(revenue, 2) if revenue is not None else None, "gross_profit": round(profit, 2) if profit is not None else None, "profit_margin_pct": round(profit / revenue * 100, 1) if profit is not None and revenue else None, "units_sold": round(units, 2) if units is not None else None, "inventory_value": round(inventory_value, 2) if inventory_value is not None else None, "stockout_rate": stockout_rate, "overstock_rate": overstock_rate, "forecast_accuracy": self._active_model_metric("mape", as_accuracy=True), "average_selling_price": round(revenue / units, 2) if revenue is not None and units else None, "price_change_impact": None, "total_products": len(products), "low_stock_count": sum(item["status"] == "LOW_STOCK" for item in inventory_items), "overstock_count": sum(item["status"] == "OVERSTOCK" for item in inventory_items), "total_orders": round(units, 2) if units else None, "recent_alerts": self.alerts(), "revenue_trend": trend[-30:], "capabilities": active["capabilities"], "decision_summary": self._decision_summary(products, inventory_items, revenue, profit)}
+        result = {"available": True, "active_dataset": active, "total_revenue": round(revenue, 2) if revenue is not None else None, "gross_profit": round(profit, 2) if profit is not None else None, "profit_margin_pct": round(profit / revenue * 100, 1) if profit is not None and revenue else None, "units_sold": round(units, 2) if units is not None else None, "inventory_value": round(inventory_value, 2) if inventory_value is not None else None, "stockout_rate": stockout_rate, "overstock_rate": overstock_rate, "forecast_accuracy": self._active_model_metric("mape", as_accuracy=True), "average_selling_price": round(revenue / units, 2) if revenue is not None and units else None, "price_change_impact": None, "total_products": len(products), "low_stock_count": sum(item["status"] == "LOW_STOCK" for item in inventory_items), "overstock_count": sum(item["status"] == "OVERSTOCK" for item in inventory_items), "total_orders": round(units, 2) if units else None, "recent_alerts": self.alerts(), "revenue_trend": trend[-30:], "capabilities": active["capabilities"], "decision_summary": self._decision_summary(products, inventory_items, revenue, profit)}
+        if dataset_id:
+            with _records_cache_lock:
+                _analytics_cache[dataset_id] = result
+        return result
 
     def _empty_metrics(self, reason):
         return {"available": False, "reason": reason, "active_dataset": None, "total_revenue": None, "gross_profit": None, "profit_margin_pct": None, "units_sold": None, "inventory_value": None, "stockout_rate": None, "overstock_rate": None, "forecast_accuracy": None, "average_selling_price": None, "price_change_impact": None, "total_products": 0, "low_stock_count": 0, "overstock_count": 0, "total_orders": None, "recent_alerts": [], "revenue_trend": [], "capabilities": {}, "decision_summary": {"what": reason, "why": "No business metrics are calculated until an active dataset is available.", "action": "Open Dataset Management to upload a compatible CSV, XLSX, or JSON file."}}
@@ -718,12 +789,22 @@ class DatasetService:
         return alerts
 
     def recommendations(self):
+        row = self._get_row()
+        dataset_id = row["dataset_id"] if row else ""
+        if dataset_id:
+            with _records_cache_lock:
+                if dataset_id in _recommendations_cache:
+                    return _recommendations_cache[dataset_id]
+
         active = self.get_active_dataset()
         if not active:
             return {"available": False, "reason": "No active dataset is available.", "recommendations": []}
         inventory = {item["product_id"]: item for item in self.inventory().get("items", [])}
         recommendations = []
-        for product in self.get_products():
+        prods = self.get_products()
+        low_stock_ids = {item["product_id"] for item in inventory.values() if item.get("status") in ("LOW_STOCK", "OVERSTOCK")}
+        sorted_prods = sorted(prods, key=lambda p: (0 if p["id"] in low_stock_ids else 1, -(p.get("demand_score") or 0)))
+        for product in sorted_prods[:30]:
             forecast = self.forecast(product["id"], 7)
             pricing = self.pricing(product["id"])
             stock = inventory.get(product["id"])
@@ -742,7 +823,11 @@ class DatasetService:
                 continue
             expected_revenue = pricing.get("expected_revenue") if pricing.get("available") else None
             recommendations.append({"id": f"REC-{product['id']}", "product_id": product["id"], "product": product["name"], "category": product["category"], "current_stock": product["stock"], "current_price": product["current_price"], "competitor_price": product["competitor_price"], "predicted_demand": predicted, "recommended_stock": stock.get("recommended_stock") if stock else None, "replenishment_units": stock.get("suggested_reorder_qty", 0) if stock else 0, "recommended_price": recommended_price, "price_change_pct": round((recommended_price - product["current_price"]) / product["current_price"] * 100, 1) if recommended_price is not None and product["current_price"] else None, "expected_revenue": expected_revenue, "expected_profit": pricing.get("expected_profit") if pricing.get("available") else None, "profit_margin_pct": pricing.get("profit_margin_pct") if pricing.get("available") else None, "confidence": pricing.get("confidence_score") if pricing.get("available") else 70, "strategy": pricing.get("strategy") if pricing.get("available") else "Inventory optimisation", "reasons": reasons, "recommendation": " and ".join(actions).capitalize() + ".", "priority": "High" if stock and stock["status"] == "LOW_STOCK" else "Medium", "available_actions": {"pricing": pricing.get("available", False), "inventory": bool(stock and stock["suggested_reorder_qty"] > 0)}})
-        return {"available": True, "generated_at": datetime.now().isoformat(), "recommendations": recommendations}
+        result = {"available": True, "generated_at": datetime.now().isoformat(), "recommendations": recommendations}
+        if dataset_id:
+            with _records_cache_lock:
+                _recommendations_cache[dataset_id] = result
+        return result
 
     def train(self, dataset_id, background: bool = False):
         """Train ML models for dataset_id.

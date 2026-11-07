@@ -12,6 +12,11 @@ from dataset_service import DatasetService
 app = Flask(__name__)
 CORS(app)
 datasets = DatasetService()
+try:
+    if datasets.get_active_dataset():
+        datasets.active_records()
+except Exception:
+    pass
 
 
 def product_forecast_snapshot(product, days=7):
@@ -726,9 +731,13 @@ def auth_me():
 
 @app.route('/api/reports', methods=['GET'])
 def get_reports():
-    if datasets.get_active_dataset() and datasets.analytics().get("available"):
+    if datasets.get_active_dataset():
         metrics = datasets.analytics()
-        decision_data = datasets.recommendations()
+        if metrics.get("available"):
+            decision_data = datasets.recommendations()
+        else:
+            metrics = executive_metrics()
+            decision_data = {"recommendations": [build_decision(p) for p in db.get_products()]}
     else:
         metrics = executive_metrics()
         decision_data = {"recommendations": [build_decision(p) for p in db.get_products()]}

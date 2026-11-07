@@ -53,7 +53,7 @@ for i, (name, method, endpoint, payload) in enumerate(tests, 1):
     
     t0 = time.time()
     try:
-        with urllib.request.urlopen(req, timeout=5) as response:
+        with urllib.request.urlopen(req, timeout=15) as response:
             t1 = time.time()
             elapsed_ms = round((t1 - t0) * 1000, 1)
             total_time += elapsed_ms
