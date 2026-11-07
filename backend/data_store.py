@@ -12,7 +12,7 @@ SQLITE_FILE = os.path.join(os.path.dirname(__file__), 'neuroretail.db')
 STORES = [
     {
         "id": "STORE-01",
-        "name": "ABC Supermarket",
+        "name": "Supermarket",
         "type": "Supermarket & Grocery",
         "category": "Retail Grocery",
         "gstin": "27ABCDE1234F1Z5",
@@ -25,7 +25,7 @@ STORES = [
     },
     {
         "id": "STORE-02",
-        "name": "XYZ Fashion Outlet",
+        "name": "Fashion Outlet",
         "type": "Apparel & Fashion",
         "category": "Clothing",
         "gstin": "29XYZAB5678G2Z1",
@@ -79,24 +79,18 @@ class DataStore:
         self.stores = STORES
         self.active_store_id = "STORE-01"
         self.user_role = "Admin"
-        self.current_user = {
-            "id": "USR-001",
-            "name": "Ananya Iyer",
-            "email": "ananya.iyer@neuroretail.demo",
-            "role": "Admin",
-            "last_login": datetime.now().strftime("%Y-%m-%d %H:%M")
-        }
         self.users = [
-            self.current_user,
-            {"id": "USR-002", "name": "Karthik Rao", "email": "karthik.rao@neuroretail.demo", "role": "Store Manager", "last_login": "2026-08-12 09:42"},
-            {"id": "USR-003", "name": "Meera Shah", "email": "meera.shah@neuroretail.demo", "role": "Analyst", "last_login": "2026-08-12 10:18"},
-            {"id": "USR-004", "name": "Vikram Supply Co.", "email": "orders@vikramsupply.demo", "role": "Supplier", "last_login": "2026-08-11 16:07"}
+            {"id": "dharanesh", "username": "dharanesh", "name": "Dharanesh", "email": "dharanesh@neuroretail.demo", "password": "123123123", "role": "Admin", "last_login": datetime.now().strftime("%Y-%m-%d %H:%M")},
+            {"id": "vikas", "username": "vikas", "name": "Vikas", "email": "vikas@neuroretail.demo", "password": "123123123", "role": "Store Manager", "last_login": "2026-08-12 09:42"},
+            {"id": "chandu", "username": "chandu", "name": "Chandu", "email": "chandu@neuroretail.demo", "password": "123123123", "role": "Analyst", "last_login": "2026-08-12 10:18"},
+            {"id": "shraddha", "username": "shraddha", "name": "Shraddha", "email": "shraddha@neuroretail.demo", "password": "123123123", "role": "Supplier", "last_login": "2026-08-11 16:07"}
         ]
+        self.current_user = dict(self.users[0])
         self.audit_logs = [
-            {"id": "AUD-1004", "timestamp": "2026-08-12 10:18", "user": "Meera Shah", "role": "Analyst", "action": "Validated sales dataset", "product": "sales_july.csv", "previous_value": "Pending", "new_value": "Quality score 96%", "type": "data"},
-            {"id": "AUD-1003", "timestamp": "2026-08-12 09:42", "user": "Karthik Rao", "role": "Store Manager", "action": "Approved replenishment", "product": "CogniHome Smart Hub", "previous_value": "12 units", "new_value": "80 units on order", "type": "inventory"},
-            {"id": "AUD-1002", "timestamp": "2026-08-12 09:24", "user": "Ananya Iyer", "role": "Admin", "action": "Updated price", "product": "AcousticSense ANC Headphones", "previous_value": "₹13,999", "new_value": "₹14,299", "type": "pricing"},
-            {"id": "AUD-1001", "timestamp": "2026-08-12 08:55", "user": "Ananya Iyer", "role": "Admin", "action": "Retrained forecast model", "product": "Demand Forecasting", "previous_value": "v2.3", "new_value": "v2.4", "type": "model"}
+            {"id": "AUD-1004", "timestamp": "2026-08-12 10:18", "user": "Chandu", "role": "Analyst", "action": "Validated sales dataset", "product": "sales_july.csv", "previous_value": "Pending", "new_value": "Quality score 96%", "type": "data"},
+            {"id": "AUD-1003", "timestamp": "2026-08-12 09:42", "user": "Vikas", "role": "Store Manager", "action": "Approved replenishment", "product": "CogniHome Smart Hub", "previous_value": "12 units", "new_value": "80 units on order", "type": "inventory"},
+            {"id": "AUD-1002", "timestamp": "2026-08-12 09:24", "user": "Dharanesh", "role": "Admin", "action": "Updated price", "product": "AcousticSense ANC Headphones", "previous_value": "₹13,999", "new_value": "₹14,299", "type": "pricing"},
+            {"id": "AUD-1001", "timestamp": "2026-08-12 08:55", "user": "Dharanesh", "role": "Admin", "action": "Retrained forecast model", "product": "Demand Forecasting", "previous_value": "v2.3", "new_value": "v2.4", "type": "model"}
         ]
         self.alerts = [
             { "id": "ALT-1", "timestamp": "18:40:12", "type": "STOCK_CRITICAL", "title": "Critical Stock: SmartWatch Pro", "message": "Current stock (18) is below safety threshold (25). Auto PO suggested.", "severity": "high" },
@@ -263,12 +257,21 @@ class DataStore:
         return None
 
     def add_audit_log(self, action, product, previous_value, new_value, log_type="system", user=None):
-        actor = user or self.current_user
+        if isinstance(user, dict):
+            actor_name = user.get("name", "System")
+            actor_role = user.get("role", "System")
+        elif isinstance(user, str):
+            actor_name = user
+            actor_role = self.current_user.get("role", "System")
+        else:
+            actor_name = self.current_user.get("name", "System")
+            actor_role = self.current_user.get("role", "System")
+
         entry = {
             "id": f"AUD-{1000 + len(self.audit_logs) + 1}",
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "user": actor.get("name", "System"),
-            "role": actor.get("role", "System"),
+            "user": actor_name,
+            "role": actor_role,
             "action": action,
             "product": product,
             "previous_value": str(previous_value),

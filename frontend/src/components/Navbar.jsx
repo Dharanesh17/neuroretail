@@ -3,7 +3,6 @@ import {
   Bell,
   Bot,
   ChevronDown,
-  Globe2,
   MessageSquare,
   Moon,
   RefreshCw,
@@ -12,9 +11,19 @@ import {
   Store,
   Sun,
   UserCircle,
+  LogOut,
+  ShieldCheck
 } from 'lucide-react';
 
-export default function Navbar({ onOpenVoice, onTriggerRetrain, aiMetrics, alertCount, onOpenAlerts }) {
+export default function Navbar({
+  onOpenVoice,
+  onTriggerRetrain,
+  aiMetrics,
+  alertCount,
+  onOpenAlerts,
+  currentUser,
+  onLogout
+}) {
   const [retraining, setRetraining] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
@@ -124,15 +133,6 @@ export default function Navbar({ onOpenVoice, onTriggerRetrain, aiMetrics, alert
 
           <button
             type="button"
-            onClick={() => toggleMenu('language')}
-            className="hidden h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-blue-200 hover:text-blue-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 xl:inline-flex"
-            title="Language"
-          >
-            <Globe2 className="h-5 w-5" />
-          </button>
-
-          <button
-            type="button"
             onClick={() => setIsDark((value) => !value)}
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-blue-200 hover:text-blue-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
             title="Toggle theme"
@@ -153,16 +153,33 @@ export default function Navbar({ onOpenVoice, onTriggerRetrain, aiMetrics, alert
             type="button"
             onClick={() => toggleMenu('profile')}
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-slate-700 transition hover:border-blue-200 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
-            title="User profile"
+            title="User profile & session"
           >
-            <UserCircle className="h-5 w-5 text-slate-500" />
-            <span className="hidden text-xs font-bold md:inline">Admin</span>
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-600 text-[10px] font-black text-white">
+              {currentUser?.name
+                ? currentUser.name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase()
+                : 'NR'}
+            </div>
+            <div className="hidden text-left md:block">
+              <span className="block text-xs font-bold leading-tight text-slate-900 dark:text-white">
+                {currentUser?.name || 'Admin User'}
+              </span>
+              <span className="block text-[10px] font-semibold text-blue-600 dark:text-blue-400 leading-tight">
+                {currentUser?.role || 'Admin'}
+              </span>
+            </div>
+            <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
           </button>
         </div>
       </div>
 
       {activeMenu && (
-        <div className="absolute right-4 top-[calc(100%+8px)] w-72 rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-xl dark:border-slate-800 dark:bg-slate-900">
+        <div className="absolute right-4 top-[calc(100%+8px)] w-80 rounded-xl border border-slate-200 bg-white p-3.5 text-sm shadow-2xl dark:border-slate-800 dark:bg-slate-900 animate-fadeIn z-50">
           {activeMenu === 'stores' && (
             <div className="space-y-2">
               <p className="text-xs font-black uppercase tracking-wide text-slate-400">Store selector</p>
@@ -196,23 +213,6 @@ export default function Navbar({ onOpenVoice, onTriggerRetrain, aiMetrics, alert
             </div>
           )}
 
-          {activeMenu === 'language' && (
-            <div className="space-y-2">
-              <p className="text-xs font-black uppercase tracking-wide text-slate-400">Language</p>
-              {['English', 'Hindi', 'Tamil'].map((language) => (
-                <button
-                  key={language}
-                  type="button"
-                  onClick={() => setActiveMenu(null)}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 font-bold text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
-                >
-                  <span>{language}</span>
-                  {language === 'English' && <span className="text-xs text-blue-600">Active</span>}
-                </button>
-              ))}
-            </div>
-          )}
-
           {activeMenu === 'settings' && (
             <div className="space-y-3">
               <p className="text-xs font-black uppercase tracking-wide text-slate-400">Settings</p>
@@ -229,18 +229,57 @@ export default function Navbar({ onOpenVoice, onTriggerRetrain, aiMetrics, alert
 
           {activeMenu === 'profile' && (
             <div className="space-y-3">
-              <p className="text-xs font-black uppercase tracking-wide text-slate-400">User profile</p>
-              <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800">
-                <p className="font-black text-slate-900 dark:text-white">Admin User</p>
-                <p className="mt-1 text-xs font-medium text-slate-500">Retail operations manager</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-black uppercase tracking-wide text-slate-400">Active Profile</p>
+                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Authenticated
+                </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setActiveMenu(null)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 font-bold text-slate-700 transition hover:border-blue-200 hover:text-blue-700 dark:border-slate-700 dark:text-slate-200"
-              >
-                Close
-              </button>
+
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-slate-800/80">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-sm font-black text-white shadow-sm">
+                    {currentUser?.name
+                      ? currentUser.name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase()
+                      : 'DH'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-black text-slate-900 dark:text-white">
+                      {currentUser?.name || 'Dharanesh'}
+                    </p>
+                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                      {currentUser?.email || 'dharanesh@neuroretail.demo'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between border-t border-slate-200/60 pt-2 text-xs text-slate-500 dark:border-slate-700/60 dark:text-slate-400">
+                  <span className="font-medium">Assigned Role:</span>
+                  <span className="rounded bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                    {currentUser?.role || 'Admin'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-1 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveMenu(null);
+                    if (onLogout) onLogout();
+                  }}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200/80 bg-red-50/50 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Sign Out of Workspace</span>
+                </button>
+              </div>
             </div>
           )}
         </div>

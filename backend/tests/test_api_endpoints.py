@@ -1,3 +1,4 @@
+# pyrefly: ignore[missing-import]
 import pytest
 import sys
 import os
@@ -117,3 +118,59 @@ def test_ai_chat_query(client):
     data = json.loads(rv.data)
     assert "response" in data
     assert len(data["response"]) > 0
+
+
+def test_auth_login_and_logout(client):
+    """POST /api/auth/login authenticates user and /api/auth/logout logs out."""
+    login_rv = client.post('/api/auth/login', json={
+        "email": "vikas@neuroretail.demo",
+        "password": "password123",
+        "role": "Store Manager"
+    })
+    assert login_rv.status_code == 200
+    login_data = json.loads(login_rv.data)
+    assert login_data["success"] is True
+    assert login_data["user"]["role"] == "Store Manager"
+    assert "token" in login_data
+
+    me_rv = client.get('/api/auth/me')
+    assert me_rv.status_code == 200
+    me_data = json.loads(me_rv.data)
+    assert me_data["authenticated"] is True
+    assert me_data["user"]["email"] == "vikas@neuroretail.demo"
+
+    logout_rv = client.post('/api/auth/logout')
+    assert logout_rv.status_code == 200
+    logout_data = json.loads(logout_rv.data)
+    assert logout_data["success"] is True
+
+
+def test_auth_login_all_users_name_id_and_password(client):
+    """Verify dharanesh, vikas, chandu, and shraddha can log in by ID/name with password 123123123."""
+    users_to_test = [
+        ("dharanesh", "Admin"),
+        ("vikas", "Store Manager"),
+        ("chandu", "Analyst"),
+        ("shraddha", "Supplier")
+    ]
+    for user_id, expected_role in users_to_test:
+        # Test by id/username
+        res = client.post('/api/auth/login', json={
+            "username": user_id,
+            "password": "123123123"
+        })
+        assert res.status_code == 200, f"Login failed for user {user_id}"
+        data = json.loads(res.data)
+        assert data["success"] is True
+        assert data["user"]["role"] == expected_role
+        assert data["user"]["id"] == user_id
+        assert data["user"]["username"] == user_id
+
+        # Verify invalid password rejected
+        bad_res = client.post('/api/auth/login', json={
+            "username": user_id,
+            "password": "wrongpassword"
+        })
+        assert bad_res.status_code == 401
+
+

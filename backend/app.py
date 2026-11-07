@@ -3,6 +3,7 @@ from flask_cors import CORS
 from datetime import datetime, timedelta
 import random
 import os
+import uuid
 
 from data_store import db
 from ml_engine import pricing_engine, demand_forecaster, recommendation_engine
@@ -643,12 +644,85 @@ def switch_role():
     allowed_roles = ["Admin", "Store Manager", "Analyst", "Supplier"]
     if role not in allowed_roles:
         return jsonify({"error": "Unsupported role"}), 400
-    previous = db.current_user["role"]
-    db.current_user["role"] = role
+    previous = db.current_user.get("role", "Admin")
+    matched_persona = next((u for u in db.users if u.get("role") == role), None)
+    if matched_persona:
+        db.current_user = dict(matched_persona)
+    else:
+        db.current_user = dict(db.current_user)
+        db.current_user["role"] = role
     db.user_role = role
-    db.add_audit_log("Changed active role", "Access control", previous, role, "security")
+    db.add_audit_log("Changed active role", "Access control", previous, role, "security", user=db.current_user.get("name", "User"))
     db._save_state("active_role", role)
     return jsonify({"success": True, "current_user": db.current_user})
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def auth_login():
+    data = request.json or {}
+    identifier = (data.get("username") or data.get("email") or data.get("id") or "").strip().lower()
+    password = (data.get("password") or "").strip()
+    role = data.get("role")
+
+    matched_user = None
+    if identifier:
+        for u in db.users:
+            if (
+                u.get("username", "").lower() == identifier
+                or u.get("id", "").lower() == identifier
+                or u.get("name", "").lower() == identifier
+                or u.get("email", "").lower() == identifier
+            ):
+                matched_user = u
+                break
+    elif role:
+        for u in db.users:
+            if u.get("role", "").lower() == role.lower():
+                matched_user = u
+                break
+
+    if not matched_user:
+        if not identifier:
+            return jsonify({"error": "User ID, username, or email is required"}), 400
+        # If user typed an unknown identifier, check if it matches a valid role or inform them
+        return jsonify({"error": "User not found. Valid user IDs are: dharanesh, vikas, chandu, shraddha"}), 404
+
+    # Enforce password
+    valid_passwords = ["123123123", "password123"]
+    if matched_user.get("password"):
+        valid_passwords.append(matched_user["password"])
+    if password not in valid_passwords:
+        return jsonify({"error": "Invalid password. Please enter: 123123123"}), 401
+
+    matched_user["last_login"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+    db.current_user = dict(matched_user)
+    db.user_role = matched_user["role"]
+    db.add_audit_log("User logged in", "Authentication", "Logged out", matched_user["role"], "security", user=matched_user["name"])
+    db._save_state("active_role", matched_user["role"])
+
+    token = f"nr-auth-{uuid.uuid4().hex[:20]}"
+    return jsonify({
+        "success": True,
+        "token": token,
+        "user": matched_user,
+        "message": f"Welcome back, {matched_user['name']}"
+    })
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+def auth_logout():
+    user_name = db.current_user.get("name", "User")
+    db.add_audit_log("User logged out", "Authentication", db.current_user.get("role", "Admin"), "Session ended", "security", user=user_name)
+    return jsonify({"success": True, "message": "Logged out successfully"})
+
+
+@app.route('/api/auth/me', methods=['GET'])
+def auth_me():
+    return jsonify({
+        "authenticated": True,
+        "user": db.current_user,
+        "role": db.user_role
+    })
 
 
 @app.route('/api/reports', methods=['GET'])

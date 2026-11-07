@@ -14,6 +14,7 @@ import {
   ModelPerformanceCenter, ProductManagement, ReportsCenter,
   ScenarioSimulator, SettingsView, UsersRoles
 } from './components/EnterpriseViews';
+import LoginPage from './components/LoginPage';
 import { api } from './api/client';
 
 /* ─── PIPELINE STAGE IDs ─────────────────────────────────────────── */
@@ -33,6 +34,15 @@ function AssistantLanding({ onOpen }) {
 }
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('neuroretail_auth_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
   const [activeTab, setActiveTab] = useState('overview');
   const [summary, setSummary] = useState(null);
   const [products, setProducts] = useState([]);
@@ -68,10 +78,40 @@ export default function App() {
   };
 
   useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 15000);
-    return () => clearInterval(interval);
-  }, []);
+    if (currentUser) {
+      loadData();
+      const interval = setInterval(loadData, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [currentUser]);
+
+  const handleLogin = async (credentials) => {
+    try {
+      const res = await api.login(credentials);
+      if (res && res.success && res.user) {
+        setCurrentUser(res.user);
+        if (credentials.rememberMe !== false) {
+          localStorage.setItem('neuroretail_auth_user', JSON.stringify(res.user));
+          if (res.token) localStorage.setItem('neuroretail_auth_token', res.token);
+        }
+        await loadData();
+        return { success: true };
+      }
+      return { error: res?.error || 'Authentication failed' };
+    } catch (e) {
+      return { error: 'Failed to authenticate. Server connection error.' };
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await api.logout();
+    } catch (e) {}
+    localStorage.removeItem('neuroretail_auth_user');
+    localStorage.removeItem('neuroretail_auth_token');
+    setCurrentUser(null);
+    setActiveTab('overview');
+  };
 
   const handleTriggerRetrain = async () => {
     const result = await api.retrainAI();
@@ -118,9 +158,21 @@ export default function App() {
     }
   };
 
+  if (!currentUser) {
+    return <LoginPage onLoginSuccess={handleLogin} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 selection:bg-blue-500 selection:text-white dark:bg-slate-950 dark:text-slate-100">
-      <Navbar onOpenVoice={() => setVoiceOpen(true)} onTriggerRetrain={handleTriggerRetrain} aiMetrics={aiMetrics} alertCount={alerts.length} onOpenAlerts={() => setAlertsOpen(true)} />
+      <Navbar
+        onOpenVoice={() => setVoiceOpen(true)}
+        onTriggerRetrain={handleTriggerRetrain}
+        aiMetrics={aiMetrics}
+        alertCount={alerts.length}
+        onOpenAlerts={() => setAlertsOpen(true)}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+      />
       <div className="flex min-h-[calc(100vh-65px)] flex-col lg:flex-row">
         <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
         <main className="min-w-0 flex-1 overflow-y-auto"><div className="mx-auto w-full max-w-[1600px] space-y-5 p-4 sm:p-5 lg:p-6"><div className="flex items-center gap-2 text-xs font-bold text-slate-400"><span>NeuroRetail</span><span>/</span><span className="text-slate-700 dark:text-slate-200">{titles[activeTab]}</span></div>{renderPage()}</div></main>

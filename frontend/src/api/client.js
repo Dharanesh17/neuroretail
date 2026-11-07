@@ -5,11 +5,11 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/stores`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return {
       stores: [
-        { id: "STORE-01", name: "ABC Supermarket", type: "Supermarket & Grocery", gstin: "27ABCDE1234F1Z5", currency: "INR (₹)", health_score: 96 },
-        { id: "STORE-02", name: "XYZ Fashion Outlet", type: "Apparel & Fashion", gstin: "29XYZAB5678G2Z1", currency: "INR (₹)", health_score: 91 },
+        { id: "STORE-01", name: "Supermarket", type: "Supermarket & Grocery", gstin: "27ABCDE1234F1Z5", currency: "INR (₹)", health_score: 96 },
+        { id: "STORE-02", name: "Fashion Outlet", type: "Apparel & Fashion", gstin: "29XYZAB5678G2Z1", currency: "INR (₹)", health_score: 91 },
         { id: "STORE-03", name: "Fresh Mart Express", type: "Convenience Store", gstin: "33FRESH9012H3Z8", currency: "INR (₹)", health_score: 94 }
       ],
       active_store: { id: "STORE-01", name: "ABC Supermarket", currency_symbol: "₹" },
@@ -25,7 +25,7 @@ export const api = {
         body: JSON.stringify({ store_id: storeId })
       });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return { success: true };
   },
 
@@ -37,7 +37,7 @@ export const api = {
         body: JSON.stringify(storeData)
       });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return { success: true, store: { id: "STORE-99", name: storeData.name } };
   },
 
@@ -49,7 +49,7 @@ export const api = {
         body: JSON.stringify({ content, filename })
       });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return {
       quality_score: 98,
       total_rows_processed: 1420,
@@ -78,7 +78,7 @@ export const api = {
           reference_filename: "reference_doc.csv",
         },
       };
-    } catch (e) {}
+    } catch (e) { }
     return {
       records_count: 1420,
       sample_records: [],
@@ -96,7 +96,7 @@ export const api = {
         new_accuracy: Math.min(99.4, report?.quality_score || 97.4),
         report,
       };
-    } catch (e) {}
+    } catch (e) { }
     return {
       success: true,
       filename,
@@ -109,7 +109,7 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/ai/retrain`, { method: 'POST' });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return {
       success: true,
       metrics: {
@@ -125,7 +125,7 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/ml/compare`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return {
       best_model: "LSTM Neural Network",
       algorithms: [
@@ -143,7 +143,7 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/finance`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return {
       gross_margin_pct: 58.4,
       net_margin_pct: 28.5,
@@ -165,7 +165,7 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/insights`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return {
       opportunity_score: 88,
       risk_score: 14,
@@ -185,7 +185,7 @@ export const api = {
         body: JSON.stringify({ query })
       });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return { response: "Based on historical sales trends, demand is projected to increase by +14% next month." };
   },
 
@@ -193,7 +193,7 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/dashboard/summary`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return {
       store: { id: "STORE-01", name: "ABC Supermarket" },
       business_health_score: 96,
@@ -216,7 +216,7 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/products`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return [
       { id: "PROD-101", name: "NeuroPulse SmartWatch Pro", category: "Wearables", base_price: 19999.00, current_price: 21499.00, competitor_price: 20999.00, stock: 18, min_stock: 25, max_stock: 150, unit_cost: 11500.0, demand_score: 88, rating: 4.8, return_rate: 0.02, image_url: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=60" },
       { id: "PROD-102", name: "AcousticSense ANC Headphones", category: "Audio", base_price: 14999.00, current_price: 13999.00, competitor_price: 14499.00, stock: 62, min_stock: 20, max_stock: 120, unit_cost: 7500.0, demand_score: 74, rating: 4.7, return_rate: 0.04, image_url: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60" },
@@ -232,7 +232,7 @@ export const api = {
         body: JSON.stringify({ product_id: productId, is_peak_hour: isPeak })
       });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return {
       product_id: productId || "PROD-101",
       base_price: 19999.00,
@@ -256,7 +256,7 @@ export const api = {
         body: JSON.stringify({ product_id: productId, new_price: newPrice })
       });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return { success: true };
   },
 
@@ -264,7 +264,7 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/forecast/${productId}?days=${days}`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return {
       product_id: productId,
       forecast_days: days,
@@ -283,7 +283,7 @@ export const api = {
         const data = await res.json();
         return Array.isArray(data) ? data : (data?.items || []);
       }
-    } catch (e) {}
+    } catch (e) { }
     return [
       { product_id: "PROD-101", name: "NeuroPulse SmartWatch Pro", category: "Wearables", stock: 18, min_stock: 25, max_stock: 150, status: "LOW_STOCK", suggested_reorder_qty: 132, unit_cost: 11500.0, eoq_units: 85, safety_stock: 25, abc_classification: "Class A" }
     ];
@@ -297,7 +297,7 @@ export const api = {
         body: JSON.stringify({ product_id: productId, quantity })
       });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return {
       success: true,
       po_number: `PO-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -310,7 +310,7 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/iot/shelves`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return [
       { shelf_id: "SH-101", product_id: "PROD-101", product_name: "NeuroPulse SmartWatch Pro", current_weight_grams: 2160, current_units: 18, capacity_units: 60, status: "LOW_STOCK" },
       { shelf_id: "SH-102", product_id: "PROD-102", product_name: "AcousticSense ANC Headphones", current_weight_grams: 7440, current_units: 62, capacity_units: 90, status: "OPTIMAL" },
@@ -326,7 +326,7 @@ export const api = {
         body: JSON.stringify({ shelf_id: shelfId, units })
       });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return { success: true, shelf_id: shelfId, units_removed: units };
   },
 
@@ -334,7 +334,7 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/analytics/customer`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return {
       repeat_customer_rate: 68.4,
       average_order_value: 14250.00,
@@ -356,7 +356,7 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/recommendations/${userId}`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     const prods = await this.getProducts();
     return {
       user_id: userId,
@@ -373,7 +373,7 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/executive/dashboard`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return this.getSummary();
   },
 
@@ -381,7 +381,7 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/decision/recommendations`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return { recommendations: [] };
   },
 
@@ -391,7 +391,7 @@ export const api = {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return { demand: 0, revenue: 0, profit: 0, margin: 0, ending_inventory: 0, assumptions: {} };
   },
 
@@ -399,7 +399,7 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/model-performance`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return { best_model: 'Gradient Boosting', algorithms: [], forecast_vs_actual: [] };
   },
 
@@ -407,7 +407,7 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/data-quality`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return { quality_score: 0, checks: [] };
   },
 
@@ -418,7 +418,7 @@ export const api = {
         const data = await res.json();
         return { alerts: Array.isArray(data) ? data : (data?.alerts || []) };
       }
-    } catch (e) {}
+    } catch (e) { }
     return { alerts: [] };
   },
 
@@ -429,7 +429,7 @@ export const api = {
         const data = await res.json();
         return { logs: Array.isArray(data) ? data : (data?.logs || []) };
       }
-    } catch (e) {}
+    } catch (e) { }
     return { logs: [] };
   },
 
@@ -437,8 +437,69 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/users`);
       if (res.ok) return await res.json();
-    } catch (e) {}
-    return { current_user: { name: 'Ananya Iyer', role: 'Admin' }, users: [], roles: ['Admin', 'Store Manager', 'Analyst', 'Supplier'] };
+    } catch (e) { }
+    return { current_user: { name: 'Dharanesh', role: 'Admin' }, users: [], roles: ['Admin', 'Store Manager', 'Analyst', 'Supplier'] };
+  },
+
+  async login({ email, username, id, password, role }) {
+    const identifier = (username || id || email || '').trim();
+    try {
+      const res = await fetch(`${BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: identifier, email: identifier, id: identifier, password, role })
+      });
+      const data = await res.json();
+      if (res.ok) return data;
+      return { success: false, error: data?.error || 'Authentication failed' };
+    } catch (e) { }
+
+    // Fallback simulation for offline/dev preview
+    const roleMap = {
+      'dharanesh': { name: 'Dharanesh', role: 'Admin', id: 'dharanesh', email: 'dharanesh@neuroretail.demo' },
+      'dharanesh@neuroretail.demo': { name: 'Dharanesh', role: 'Admin', id: 'dharanesh', email: 'dharanesh@neuroretail.demo' },
+      'vikas': { name: 'Vikas', role: 'Store Manager', id: 'vikas', email: 'vikas@neuroretail.demo' },
+      'vikas@neuroretail.demo': { name: 'Vikas', role: 'Store Manager', id: 'vikas', email: 'vikas@neuroretail.demo' },
+      'chandu': { name: 'Chandu', role: 'Analyst', id: 'chandu', email: 'chandu@neuroretail.demo' },
+      'chandu@neuroretail.demo': { name: 'Chandu', role: 'Analyst', id: 'chandu', email: 'chandu@neuroretail.demo' },
+      'shraddha': { name: 'Shraddha', role: 'Supplier', id: 'shraddha', email: 'shraddha@neuroretail.demo' },
+      'shraddha@neuroretail.demo': { name: 'Shraddha', role: 'Supplier', id: 'shraddha', email: 'shraddha@neuroretail.demo' },
+    };
+
+    const key = identifier.toLowerCase();
+    const defaultUser = roleMap[key] || {
+      id: key || 'dharanesh',
+      name: key ? key.replace(/\b\w/g, l => l.toUpperCase()) : 'Dharanesh',
+      email: key.includes('@') ? key : `${key || 'dharanesh'}@neuroretail.demo`,
+      role: role || 'Admin'
+    };
+
+    if (password && password !== '123123123' && password !== 'password123') {
+      return { success: false, error: 'Invalid password. Please enter: 123123123' };
+    }
+
+    return {
+      success: true,
+      token: `nr-demo-${Date.now()}`,
+      user: defaultUser,
+      message: `Welcome back, ${defaultUser.name}`
+    };
+  },
+
+  async logout() {
+    try {
+      const res = await fetch(`${BASE_URL}/auth/logout`, { method: 'POST' });
+      if (res.ok) return await res.json();
+    } catch (e) { }
+    return { success: true };
+  },
+
+  async getAuthStatus() {
+    try {
+      const res = await fetch(`${BASE_URL}/auth/me`);
+      if (res.ok) return await res.json();
+    } catch (e) { }
+    return { authenticated: false };
   },
 
   async switchRole(role) {
@@ -447,8 +508,8 @@ export const api = {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role })
       });
       if (res.ok) return await res.json();
-    } catch (e) {}
-    return { success: true, current_user: { name: 'Ananya Iyer', role } };
+    } catch (e) { }
+    return { success: true, current_user: { name: 'Dharanesh', role } };
   },
 
   async getCompetitorAnalysis() {
@@ -458,7 +519,7 @@ export const api = {
         const data = await res.json();
         return Array.isArray(data) ? data : (data?.items || []);
       }
-    } catch (e) {}
+    } catch (e) { }
     return [];
   },
 
@@ -466,7 +527,7 @@ export const api = {
     try {
       const res = await fetch(`${BASE_URL}/reports`);
       if (res.ok) return await res.json();
-    } catch (e) {}
+    } catch (e) { }
     return { report_name: 'NeuroRetail Executive Decision Report', metrics: {}, recommendations: [] };
   }
 };
