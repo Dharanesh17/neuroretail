@@ -119,11 +119,11 @@ export default function Navbar({
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-600 text-[10px] font-black text-white">
               {currentUser?.name
                 ? currentUser.name
-                    .split(' ')
-                    .map((n) => n[0])
-                    .join('')
-                    .slice(0, 2)
-                    .toUpperCase()
+                  .split(' ')
+                  .map((n) => n[0])
+                  .join('')
+                  .slice(0, 2)
+                  .toUpperCase()
                 : 'AD'}
             </div>
             <div className="hidden text-left md:block">
@@ -149,11 +149,10 @@ export default function Navbar({
                   key={store}
                   type="button"
                   onClick={() => setActiveMenu(null)}
-                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left font-bold transition ${
-                    index === 0
-                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-                      : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'
-                  }`}
+                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left font-bold transition ${index === 0
+                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                    : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'
+                    }`}
                 >
                   <span>{store}</span>
                   {index === 0 && <span className="h-2 w-2 rounded-full bg-blue-600" />}
@@ -177,11 +176,11 @@ export default function Navbar({
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white shadow-sm">
                     {currentUser?.name
                       ? currentUser.name
-                          .split(' ')
-                          .map((n) => n[0])
-                          .join('')
-                          .slice(0, 2)
-                          .toUpperCase()
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')
+                        .slice(0, 2)
+                        .toUpperCase()
                       : 'AD'}
                   </div>
                   <div className="min-w-0 flex-1">
