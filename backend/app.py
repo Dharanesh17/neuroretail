@@ -683,16 +683,15 @@ def auth_login():
 
     if not matched_user:
         if not identifier:
-            return jsonify({"error": "User ID, username, or email is required"}), 400
-        # If user typed an unknown identifier, check if it matches a valid role or inform them
-        return jsonify({"error": "User not found. Valid user IDs are: dharanesh, vikas, chandu, shraddha"}), 404
+            return jsonify({"error": "Username or email is required"}), 400
+        return jsonify({"error": "Invalid username or password"}), 401
 
     # Enforce password
     valid_passwords = ["123123123", "password123"]
     if matched_user.get("password"):
         valid_passwords.append(matched_user["password"])
     if password not in valid_passwords:
-        return jsonify({"error": "Invalid password. Please enter: 123123123"}), 401
+        return jsonify({"error": "Invalid username or password"}), 401
 
     matched_user["last_login"] = datetime.now().strftime("%Y-%m-%d %H:%M")
     db.current_user = dict(matched_user)

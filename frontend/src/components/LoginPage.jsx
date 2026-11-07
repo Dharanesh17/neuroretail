@@ -56,11 +56,11 @@ export default function LoginPage({ onLoginSuccess }) {
     if (e) e.preventDefault();
     const cleanId = (identifier || '').trim();
     if (!cleanId) {
-      setErrorMsg('Please enter your User Name or ID (dharanesh, vikas, chandu, or shraddha).');
+      setErrorMsg('Please enter your User Name.');
       return;
     }
     if (!password) {
-      setErrorMsg('Please enter your password (123123123).');
+      setErrorMsg('Please enter your password.');
       return;
     }
 
@@ -345,14 +345,9 @@ export default function LoginPage({ onLoginSuccess }) {
               {/* Form Controls */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      User Name or ID
-                    </label>
-                    <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">
-                      Case-insensitive
-                    </span>
-                  </div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    User Name
+                  </label>
                   <div className="relative mt-1.5">
                     <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <input
@@ -361,7 +356,7 @@ export default function LoginPage({ onLoginSuccess }) {
                       autoComplete="username"
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
-                      placeholder="dharanesh, vikas, chandu, or shraddha"
+                      placeholder="User Name"
                       className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-blue-950"
                     />
                   </div>
@@ -392,7 +387,7 @@ export default function LoginPage({ onLoginSuccess }) {
                       autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="123123123"
+                      placeholder="Password"
                       className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-10 text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-blue-950"
                     />
                     <button
@@ -438,25 +433,6 @@ export default function LoginPage({ onLoginSuccess }) {
                     </>
                   )}
                 </button>
-
-                {/* Enterprise Credential Helper Info */}
-                <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 text-xs dark:border-slate-800 dark:bg-slate-800/40">
-                  <div className="flex items-center justify-between font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                    <span className="flex items-center gap-1.5">
-                      <Users className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                      Available User IDs
-                    </span>
-                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                      Password: <code className="rounded bg-blue-50 px-1 py-0.5 font-mono text-blue-700 dark:bg-blue-950 dark:text-blue-300">123123123</code>
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-600 dark:text-slate-400">
-                    <div>• <strong className="text-slate-900 dark:text-white">dharanesh</strong> (Admin)</div>
-                    <div>• <strong className="text-slate-900 dark:text-white">vikas</strong> (Store Manager)</div>
-                    <div>• <strong className="text-slate-900 dark:text-white">chandu</strong> (Analyst)</div>
-                    <div>• <strong className="text-slate-900 dark:text-white">shraddha</strong> (Supplier)</div>
-                  </div>
-                </div>
               </form>
 
               {/* Bottom Security Note */}
