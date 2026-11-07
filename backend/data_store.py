@@ -4,6 +4,7 @@ import random
 import csv
 import io
 import sqlite3
+import bcrypt
 from datetime import datetime, timedelta
 
 DATA_FILE = os.path.join(os.path.dirname(__file__), 'neuroretail_db.json')
@@ -79,59 +80,40 @@ class DataStore:
         self.stores = STORES
         self.active_store_id = "STORE-01"
         self.user_role = "Admin"
+        def _hash(pw):
+            return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
+
+        # Only the two permanent admins are seeded — all other accounts are
+        # created by an Admin through the Users & Roles panel.
         self.users = [
-            {"id": "dharanesh", "username": "dharanesh", "name": "Dharanesh", "email": "dharanesh@neuroretail.demo", "password": "123123123", "role": "Admin", "last_login": datetime.now().strftime("%Y-%m-%d %H:%M")},
-            {"id": "vikas", "username": "vikas", "name": "Vikas", "email": "vikas@neuroretail.demo", "password": "123123123", "role": "Store Manager", "last_login": "2026-08-12 09:42"},
-            {"id": "chandu", "username": "chandu", "name": "Chandu", "email": "chandu@neuroretail.demo", "password": "123123123", "role": "Analyst", "last_login": "2026-08-12 10:18"},
-            {"id": "shraddha", "username": "shraddha", "name": "Shraddha", "email": "shraddha@neuroretail.demo", "password": "123123123", "role": "Supplier", "last_login": "2026-08-11 16:07"}
+            {"id": "dharanesh", "username": "dharanesh", "name": "Dharanesh", "email": "dharanesh@neuroretail.demo", "password_hash": _hash("Admin@2024!"), "role": "Admin", "last_login": datetime.now().strftime("%Y-%m-%d %H:%M")},
+            {"id": "admin",     "username": "admin",     "name": "Admin",     "email": "admin@neuroretail.demo",     "password_hash": _hash("263674"),       "role": "Admin", "last_login": datetime.now().strftime("%Y-%m-%d %H:%M")},
         ]
         self.current_user = dict(self.users[0])
-        self.audit_logs = [
-            {"id": "AUD-1004", "timestamp": "2026-08-12 10:18", "user": "Chandu", "role": "Analyst", "action": "Validated sales dataset", "product": "sales_july.csv", "previous_value": "Pending", "new_value": "Quality score 96%", "type": "data"},
-            {"id": "AUD-1003", "timestamp": "2026-08-12 09:42", "user": "Vikas", "role": "Store Manager", "action": "Approved replenishment", "product": "CogniHome Smart Hub", "previous_value": "12 units", "new_value": "80 units on order", "type": "inventory"},
-            {"id": "AUD-1002", "timestamp": "2026-08-12 09:24", "user": "Dharanesh", "role": "Admin", "action": "Updated price", "product": "AcousticSense ANC Headphones", "previous_value": "₹13,999", "new_value": "₹14,299", "type": "pricing"},
-            {"id": "AUD-1001", "timestamp": "2026-08-12 08:55", "user": "Dharanesh", "role": "Admin", "action": "Retrained forecast model", "product": "Demand Forecasting", "previous_value": "v2.3", "new_value": "v2.4", "type": "model"}
-        ]
-        self.alerts = [
-            { "id": "ALT-1", "timestamp": "18:40:12", "type": "STOCK_CRITICAL", "title": "Critical Stock: SmartWatch Pro", "message": "Current stock (18) is below safety threshold (25). Auto PO suggested.", "severity": "high" },
-            { "id": "ALT-2", "timestamp": "18:25:00", "type": "PRICE_SURGE", "title": "Dynamic Price Lift Recommended", "message": "High demand velocity (+14%) detected. Suggested price lift to ₹22,399.", "severity": "info" }
-        ]
+        self.audit_logs = []          # starts empty — populated as actions are taken
+        self.alerts = []              # starts empty — generated dynamically
         self.data_cleaning_logs = {
-            "quality_score": 98,
-            "total_rows_processed": 1420,
-            "duplicates_removed": 14,
-            "missing_imputed": 6,
-            "outliers_adjusted": 3,
+            "quality_score": 0,
+            "total_rows_processed": 0,
+            "duplicates_removed": 0,
+            "missing_imputed": 0,
+            "outliers_adjusted": 0,
             "invalid_prices": 0,
             "negative_quantities": 0,
             "invalid_dates": 0,
             "missing_product_ids": 0,
             "issues": [],
-            "status": "Cleaned & Normalized"
+            "status": "No dataset uploaded yet"
         }
         self.ai_metrics = {
-            "accuracy": 96.8,
-            "mae": 0.85,
-            "retrain_count": 13,
-            "last_retrained": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "accuracy": 0,
+            "mae": 0,
+            "retrain_count": 0,
+            "last_retrained": None
         }
-        self.shelves = [
-            { "shelf_id": "SH-101", "product_id": "PROD-101", "product_name": "NeuroPulse SmartWatch Pro", "current_weight_grams": 2160, "current_units": 18, "capacity_units": 60, "status": "LOW_STOCK" },
-            { "shelf_id": "SH-102", "product_id": "PROD-102", "product_name": "AcousticSense ANC Headphones", "current_weight_grams": 7440, "current_units": 62, "capacity_units": 90, "status": "OPTIMAL" },
-            { "shelf_id": "SH-103", "product_id": "PROD-103", "product_name": "CogniHome Smart Hub", "current_weight_grams": 3600, "current_units": 12, "capacity_units": 45, "status": "CRITICAL_LOW" }
-        ]
-        self.customers = [
-            { "id": "CUST-001", "name": "Rahul Sharma", "segment": "Tech Enthusiast", "purchases_count": 14, "total_spent": 142500.00, "clv": 210000.00, "cart_abandonments": 2, "viewed_product_ids": ["PROD-101", "PROD-102"] },
-            { "id": "CUST-002", "name": "Priya Patel", "segment": "Smart Home Pioneer", "purchases_count": 8, "total_spent": 84500.00, "clv": 135000.00, "cart_abandonments": 4, "viewed_product_ids": ["PROD-103", "PROD-105"] }
-        ]
-        today = datetime.now()
-        self.sales = [
-            { "date": (today - timedelta(days=i)).strftime("%Y-%m-%d"), "product_id": "PROD-101", "units_sold": random.randint(15, 45), "revenue": random.randint(15, 45) * 21499.00 }
-            for i in range(30, 0, -1)
-        ] + [
-            { "date": (today - timedelta(days=i)).strftime("%Y-%m-%d"), "product_id": "PROD-102", "units_sold": random.randint(10, 30), "revenue": random.randint(10, 30) * 13999.00 }
-            for i in range(30, 0, -1)
-        ]
+        self.shelves = []             # populated from live product catalogue
+        self.customers = []           # no demo customers
+        self.sales = []               # no demo sales — populated from real datasets
         self._initialize_sqlite()
 
     def _connect(self):
@@ -304,6 +286,67 @@ class DataStore:
             self.save()
             return prod
         return None
+
+    # ------------------------------------------------------------------
+    # User management — Admin-only operations
+    # ------------------------------------------------------------------
+
+    def create_user(self, data):
+        """Create a new user. Returns the safe user dict or raises ValueError."""
+        username = (data.get("username") or "").strip().lower()
+        name = (data.get("name") or "").strip()
+        email = (data.get("email") or "").strip().lower()
+        password = data.get("password") or ""
+        role = data.get("role") or "Analyst"
+
+        if not username or not name or not password:
+            raise ValueError("username, name, and password are required")
+        if role not in ["Admin", "Store Manager", "Analyst", "Supplier"]:
+            raise ValueError("Invalid role")
+        # Uniqueness check
+        for u in self.users:
+            if u.get("username", "").lower() == username or u.get("id", "").lower() == username:
+                raise ValueError(f"Username '{username}' is already taken")
+        new_user = {
+            "id": username,
+            "username": username,
+            "name": name,
+            "email": email or f"{username}@neuroretail.demo",
+            "password_hash": bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode(),
+            "role": role,
+            "last_login": "Never"
+        }
+        self.users.append(new_user)
+        self.add_audit_log("Created user account", name, "—", role, "security")
+        self.save()
+        return self.safe_user(new_user)
+
+    def update_user(self, user_id, data):
+        """Update an existing user's details. Returns safe user dict or None."""
+        user = next((u for u in self.users if u.get("id") == user_id), None)
+        if not user:
+            return None
+        if "name" in data and data["name"]:
+            user["name"] = data["name"].strip()
+        if "email" in data:
+            user["email"] = data["email"].strip().lower()
+        if "role" in data and data["role"] in ["Admin", "Store Manager", "Analyst", "Supplier"]:
+            user["role"] = data["role"]
+        if "password" in data and data["password"]:
+            user["password_hash"] = bcrypt.hashpw(data["password"].encode(), bcrypt.gensalt()).decode()
+        self.add_audit_log("Updated user account", user["name"], "—", user["role"], "security")
+        self.save()
+        return self.safe_user(user)
+
+    def delete_user(self, user_id):
+        """Delete a user by id. Returns True on success, False if not found."""
+        for i, u in enumerate(self.users):
+            if u.get("id") == user_id:
+                removed = self.users.pop(i)
+                self.add_audit_log("Deleted user account", removed["name"], removed["role"], "Deleted", "security")
+                self.save()
+                return True
+        return False
 
     def get_inventory_intelligence(self):
         items = []
@@ -523,15 +566,26 @@ class DataStore:
         self.save()
         return self.data_cleaning_logs
 
+    @staticmethod
+    def safe_user(user):
+        """Return a copy of a user dict with sensitive fields removed."""
+        u = dict(user)
+        u.pop("password", None)
+        u.pop("password_hash", None)
+        return u
+
     def save(self):
         try:
+            # Never persist password_hash or password in the JSON file —
+            # only store safe (non-sensitive) user metadata.
+            safe_users = [self.safe_user(u) for u in self.users]
             data = {
                 "stores": self.stores,
                 "active_store_id": self.active_store_id,
                 "ai_metrics": self.ai_metrics,
                 "alerts": self.alerts,
                 "data_cleaning_logs": self.data_cleaning_logs,
-                "users": self.users,
+                "users": safe_users,
                 "audit_logs": self.audit_logs,
                 "products_by_store": PRODUCTS_BY_STORE
             }

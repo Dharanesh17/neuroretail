@@ -1,5 +1,30 @@
 const BASE_URL = '/api';
 
+// ---------------------------------------------------------------------------
+// Auth token helpers — token is kept in sessionStorage (not localStorage)
+// so it is cleared automatically when the browser tab closes.
+// ---------------------------------------------------------------------------
+function getToken() {
+  return sessionStorage.getItem('neuroretail_auth_token') || '';
+}
+
+function authHeaders(extra = {}) {
+  const token = getToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extra
+  };
+}
+
+async function apiFetch(path, options = {}) {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers: authHeaders(options.headers || {})
+  });
+  return res;
+}
+
 export const api = {
   async getStores() {
     try {
@@ -435,10 +460,49 @@ export const api = {
 
   async getUsers() {
     try {
-      const res = await fetch(`${BASE_URL}/users`);
+      const res = await apiFetch('/users');
       if (res.ok) return await res.json();
     } catch (e) { }
-    return { current_user: { name: 'Dharanesh', role: 'Admin' }, users: [], roles: ['Admin', 'Store Manager', 'Analyst', 'Supplier'] };
+    return { current_user: { name: 'Admin', role: 'Admin' }, users: [], roles: ['Admin', 'Store Manager', 'Analyst', 'Supplier'] };
+  },
+
+  async createUser(userData) {
+    try {
+      const res = await apiFetch('/users', {
+        method: 'POST',
+        body: JSON.stringify(userData)
+      });
+      const data = await res.json();
+      if (res.ok) return data;
+      return { success: false, error: data?.error || 'Failed to create user' };
+    } catch (e) {
+      return { success: false, error: 'Server connection error' };
+    }
+  },
+
+  async updateUser(userId, userData) {
+    try {
+      const res = await apiFetch(`/users/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify(userData)
+      });
+      const data = await res.json();
+      if (res.ok) return data;
+      return { success: false, error: data?.error || 'Failed to update user' };
+    } catch (e) {
+      return { success: false, error: 'Server connection error' };
+    }
+  },
+
+  async deleteUser(userId) {
+    try {
+      const res = await apiFetch(`/users/${userId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok) return data;
+      return { success: false, error: data?.error || 'Failed to delete user' };
+    } catch (e) {
+      return { success: false, error: 'Server connection error' };
+    }
   },
 
   async login({ email, username, id, password, role }) {
@@ -450,47 +514,25 @@ export const api = {
         body: JSON.stringify({ username: identifier, email: identifier, id: identifier, password, role })
       });
       const data = await res.json();
-      if (res.ok) return data;
+      if (res.ok && data.success) {
+        // Store token in sessionStorage — cleared on tab close, never in localStorage
+        if (data.token) sessionStorage.setItem('neuroretail_auth_token', data.token);
+        return data;
+      }
       return { success: false, error: data?.error || 'Authentication failed' };
-    } catch (e) { }
-
-    // Fallback simulation for offline/dev preview
-    const roleMap = {
-      'dharanesh': { name: 'Dharanesh', role: 'Admin', id: 'dharanesh', email: 'dharanesh@neuroretail.demo' },
-      'dharanesh@neuroretail.demo': { name: 'Dharanesh', role: 'Admin', id: 'dharanesh', email: 'dharanesh@neuroretail.demo' },
-      'vikas': { name: 'Vikas', role: 'Store Manager', id: 'vikas', email: 'vikas@neuroretail.demo' },
-      'vikas@neuroretail.demo': { name: 'Vikas', role: 'Store Manager', id: 'vikas', email: 'vikas@neuroretail.demo' },
-      'chandu': { name: 'Chandu', role: 'Analyst', id: 'chandu', email: 'chandu@neuroretail.demo' },
-      'chandu@neuroretail.demo': { name: 'Chandu', role: 'Analyst', id: 'chandu', email: 'chandu@neuroretail.demo' },
-      'shraddha': { name: 'Shraddha', role: 'Supplier', id: 'shraddha', email: 'shraddha@neuroretail.demo' },
-      'shraddha@neuroretail.demo': { name: 'Shraddha', role: 'Supplier', id: 'shraddha', email: 'shraddha@neuroretail.demo' },
-    };
-
-    const key = identifier.toLowerCase();
-    const defaultUser = roleMap[key] || {
-      id: key || 'dharanesh',
-      name: key ? key.replace(/\b\w/g, l => l.toUpperCase()) : 'Dharanesh',
-      email: key.includes('@') ? key : `${key || 'dharanesh'}@neuroretail.demo`,
-      role: role || 'Admin'
-    };
-
-    if (password && password !== '123123123' && password !== 'password123') {
-      return { success: false, error: 'Invalid password. Please enter: 123123123' };
+    } catch (e) {
+      return { success: false, error: 'Failed to connect to authentication server.' };
     }
-
-    return {
-      success: true,
-      token: `nr-demo-${Date.now()}`,
-      user: defaultUser,
-      message: `Welcome back, ${defaultUser.name}`
-    };
   },
 
   async logout() {
     try {
-      const res = await fetch(`${BASE_URL}/auth/logout`, { method: 'POST' });
+      const res = await apiFetch('/auth/logout', { method: 'POST' });
+      sessionStorage.removeItem('neuroretail_auth_token');
       if (res.ok) return await res.json();
-    } catch (e) { }
+    } catch (e) {
+      sessionStorage.removeItem('neuroretail_auth_token');
+    }
     return { success: true };
   },
 

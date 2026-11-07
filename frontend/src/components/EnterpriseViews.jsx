@@ -3,7 +3,7 @@ import { jsPDF } from 'jspdf';
 import {
   AlertCircle, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, Bot, Boxes,
   BrainCircuit, Check, CheckCircle2, CircleAlert, ClipboardCheck, Database,
-  Download, FileBarChart, FileText, Gauge, History, Lightbulb, LockKeyhole,
+  Download, FileBarChart, FileText, Gauge, History, Lightbulb,
   PackageCheck, RefreshCw, ShieldCheck, SlidersHorizontal, Sparkles, Target,
   TrendingUp, UploadCloud, Users, WandSparkles
 } from 'lucide-react';
@@ -221,11 +221,269 @@ export function ReportsCenter() {
 
 export function UsersRoles() {
   const [data, setData] = useState({ users: [], roles: [], current_user: {} });
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState(null); // null = create, object = edit
+  const [form, setForm] = useState({ username: '', name: '', email: '', password: '', role: 'Analyst' });
+  const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
-  useEffect(() => { api.getUsers().then(setData); }, []);
-  const selectRole = async (role) => { setSaving(true); const response = await api.switchRole(role); setData((current) => ({ ...current, current_user: response.current_user || current.current_user })); setSaving(false); };
-  const permissions = { Admin: 'Users, settings, models, data, audit logs', 'Store Manager': 'Dashboard, pricing, inventory, forecasts, reports', Analyst: 'Data, forecasting, model performance, scenarios', Supplier: 'Limited inventory and reorder visibility' };
-  return <div className="space-y-5"><PageHeader eyebrow="Access control" title="Users and roles" description="A focused role model for a retail organisation—enough governance for a professional prototype without unnecessary authentication complexity." /><section className="grid gap-5 xl:grid-cols-3"><div className={`${cardClass} p-5`}><div className="flex items-center gap-2"><LockKeyhole className="h-5 w-5 text-blue-600" /><h3 className="font-black text-slate-950 dark:text-white">Demo session</h3></div><p className="mt-4 text-lg font-black text-slate-950 dark:text-white">{data.current_user?.name || 'Loading…'}</p><p className="text-sm text-slate-500">{data.current_user?.email}</p><label className="mt-5 block text-xs font-black uppercase text-slate-400">Active role</label><select disabled={saving} value={data.current_user?.role || ''} onChange={(event) => selectRole(event.target.value)} className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950">{(data.roles || []).map((role) => <option key={role}>{role}</option>)}</select><p className="mt-3 text-xs leading-5 text-slate-500">Role switching is enabled for the demo so the relevant workspace can be reviewed.</p></div><div className={`${cardClass} p-5 xl:col-span-2`}><h3 className="font-black text-slate-950 dark:text-white">Role permissions</h3><div className="mt-4 grid gap-3 sm:grid-cols-2">{Object.entries(permissions).map(([role, detail]) => <div key={role} className={`rounded-lg border p-4 ${data.current_user?.role === role ? 'border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30' : 'border-slate-200 dark:border-slate-800'}`}><p className="font-black text-slate-950 dark:text-white">{role}</p><p className="mt-1 text-sm leading-5 text-slate-500">{detail}</p></div>)}</div></div></section><section className={`${cardClass} overflow-x-auto p-5`}><h3 className="font-black text-slate-950 dark:text-white">Registered users</h3><table className="mt-4 w-full min-w-[620px] text-left text-sm"><thead className="border-b border-slate-200 text-xs uppercase text-slate-400 dark:border-slate-800"><tr><th className="pb-3">User</th><th className="pb-3">Role</th><th className="pb-3">Last login</th><th className="pb-3">Status</th></tr></thead><tbody className="divide-y divide-slate-100 dark:divide-slate-800">{data.users.map((user) => <tr key={user.id}><td className="py-4"><p className="font-black text-slate-950 dark:text-white">{user.name}</p><p className="text-xs text-slate-400">{user.email}</p></td><td className="py-4 font-bold text-blue-700">{user.role}</td><td className="py-4 text-slate-500">{user.last_login}</td><td className="py-4"><span className="rounded bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">Active</span></td></tr>)}</tbody></table></section></div>;
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  const isAdmin = data.current_user?.role === 'Admin';
+
+  const reload = () => {
+    setLoading(true);
+    api.getUsers().then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
+  };
+
+  useEffect(() => { reload(); }, []);
+
+  const openCreate = () => {
+    setEditTarget(null);
+    setForm({ username: '', name: '', email: '', password: '', role: 'Analyst' });
+    setFormError('');
+    setModalOpen(true);
+  };
+
+  const openEdit = (user) => {
+    setEditTarget(user);
+    setForm({ username: user.username, name: user.name, email: user.email || '', password: '', role: user.role });
+    setFormError('');
+    setModalOpen(true);
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setFormError('');
+    setSaving(true);
+    let res;
+    if (editTarget) {
+      const payload = { name: form.name, email: form.email, role: form.role };
+      if (form.password) payload.password = form.password;
+      res = await api.updateUser(editTarget.id, payload);
+    } else {
+      res = await api.createUser(form);
+    }
+    setSaving(false);
+    if (res?.success) {
+      setModalOpen(false);
+      reload();
+    } else {
+      setFormError(res?.error || 'An error occurred');
+    }
+  };
+
+  const handleDelete = async (userId) => {
+    setSaving(true);
+    const res = await api.deleteUser(userId);
+    setSaving(false);
+    setDeleteConfirm(null);
+    if (res?.success) {
+      reload();
+    } else {
+      alert(res?.error || 'Failed to delete user');
+    }
+  };
+
+  const permissions = {
+    Admin: 'Full access — users, settings, models, data, pricing, audit logs',
+    'Store Manager': 'Dashboard, pricing, inventory, forecasts, reports',
+    Analyst: 'Data upload, forecasting, model performance, scenarios',
+    Supplier: 'Limited inventory and reorder visibility only'
+  };
+
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        eyebrow="Access control"
+        title="Users & Roles"
+        description="Manage who has access to the NeuroRetail platform. Only Admins can create, edit, or delete accounts."
+        action={
+          isAdmin && (
+            <button type="button" className={buttonClass} onClick={openCreate}>
+              + Add User
+            </button>
+          )
+        }
+      />
+
+      {/* Role Permissions */}
+      <section className={`${cardClass} p-5`}>
+        <h3 className="font-black text-slate-950 dark:text-white mb-4">Role Permissions</h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {Object.entries(permissions).map(([role, detail]) => (
+            <div key={role} className={`rounded-lg border p-4 ${data.current_user?.role === role ? 'border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30' : 'border-slate-200 dark:border-slate-800'}`}>
+              <p className="font-black text-slate-950 dark:text-white text-sm">{role}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{detail}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* User Table */}
+      <section className={`${cardClass} overflow-x-auto p-5`}>
+        <h3 className="font-black text-slate-950 dark:text-white mb-4">Registered Users</h3>
+        {loading ? (
+          <p className="text-sm text-slate-400 py-4">Loading...</p>
+        ) : (
+          <table className="w-full min-w-[620px] text-left text-sm">
+            <thead className="border-b border-slate-200 text-xs uppercase text-slate-400 dark:border-slate-800">
+              <tr>
+                <th className="pb-3 font-bold">User</th>
+                <th className="pb-3 font-bold">Role</th>
+                <th className="pb-3 font-bold">Last Login</th>
+                <th className="pb-3 font-bold">Status</th>
+                {isAdmin && <th className="pb-3 font-bold text-right">Actions</th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {data.users.map((user) => (
+                <tr key={user.id}>
+                  <td className="py-4">
+                    <p className="font-black text-slate-950 dark:text-white">{user.name}</p>
+                    <p className="text-xs text-slate-400">{user.email || `${user.username}@neuroretail.demo`}</p>
+                  </td>
+                  <td className="py-4 font-bold text-blue-700 dark:text-blue-400">{user.role}</td>
+                  <td className="py-4 text-slate-500 text-xs">{user.last_login || '—'}</td>
+                  <td className="py-4">
+                    <span className="rounded bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">Active</span>
+                  </td>
+                  {isAdmin && (
+                    <td className="py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(user)}
+                          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                        >
+                          Edit
+                        </button>
+                        {user.id !== data.current_user?.id && (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirm(user)}
+                            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+              {data.users.length === 0 && (
+                <tr><td colSpan={isAdmin ? 5 : 4} className="py-8 text-center text-sm text-slate-400">No users found. Add the first user above.</td></tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      {/* Create / Edit Modal */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+            <h3 className="text-lg font-black text-slate-950 dark:text-white mb-5">
+              {editTarget ? `Edit User — ${editTarget.name}` : 'Create New User'}
+            </h3>
+
+            {formError && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+                {formError}
+              </div>
+            )}
+
+            <form onSubmit={handleSave} className="space-y-4">
+              {!editTarget && (
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Username *</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.username}
+                    onChange={(e) => setForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/\s/g, '') }))}
+                    placeholder="e.g. john.doe"
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="e.g. John Doe"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
+                  placeholder="name@company.com"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
+                  Password {editTarget && <span className="normal-case font-normal">(leave blank to keep current)</span>}
+                </label>
+                <input
+                  type="password"
+                  required={!editTarget}
+                  value={form.password}
+                  onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
+                  placeholder={editTarget ? 'New password (optional)' : 'Set a strong password'}
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Role *</label>
+                <select
+                  value={form.role}
+                  onChange={(e) => setForm(f => ({ ...f, role: e.target.value }))}
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                >
+                  {(data.roles || ['Admin', 'Store Manager', 'Analyst', 'Supplier']).map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setModalOpen(false)} className="flex-1 rounded-lg border border-slate-200 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300">Cancel</button>
+                <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-600 py-2.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60">
+                  {saving ? 'Saving...' : editTarget ? 'Save Changes' : 'Create User'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+            <h3 className="font-black text-slate-950 dark:text-white mb-2">Delete User?</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
+              This will permanently delete <strong className="text-slate-800 dark:text-white">{deleteConfirm.name}</strong>. This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setDeleteConfirm(null)} className="flex-1 rounded-lg border border-slate-200 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300">Cancel</button>
+              <button type="button" disabled={saving} onClick={() => handleDelete(deleteConfirm.id)} className="flex-1 rounded-lg bg-red-600 py-2.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-60">
+                {saving ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function SettingsView() {

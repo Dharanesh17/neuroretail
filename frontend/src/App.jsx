@@ -36,8 +36,14 @@ function AssistantLanding({ onOpen }) {
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
     try {
-      const stored = localStorage.getItem('neuroretail_auth_user');
-      return stored ? JSON.parse(stored) : null;
+      // Only restore session if a valid auth token exists in sessionStorage
+      const token = sessionStorage.getItem('neuroretail_auth_token');
+      const stored = sessionStorage.getItem('neuroretail_session_user');
+      if (token && stored) return JSON.parse(stored);
+      // Clear any stale data from old localStorage-based sessions
+      localStorage.removeItem('neuroretail_auth_user');
+      localStorage.removeItem('neuroretail_auth_token');
+      return null;
     } catch (e) {
       return null;
     }
@@ -90,9 +96,10 @@ export default function App() {
       const res = await api.login(credentials);
       if (res && res.success && res.user) {
         setCurrentUser(res.user);
+        // Store the safe user object (no password) in sessionStorage — clears on tab close
+        // The auth token is stored in sessionStorage by api.login()
         if (credentials.rememberMe !== false) {
-          localStorage.setItem('neuroretail_auth_user', JSON.stringify(res.user));
-          if (res.token) localStorage.setItem('neuroretail_auth_token', res.token);
+          sessionStorage.setItem('neuroretail_session_user', JSON.stringify(res.user));
         }
         await loadData();
         return { success: true };
@@ -107,6 +114,8 @@ export default function App() {
     try {
       await api.logout();
     } catch (e) {}
+    // api.logout() already clears the token from sessionStorage
+    sessionStorage.removeItem('neuroretail_session_user');
     localStorage.removeItem('neuroretail_auth_user');
     localStorage.removeItem('neuroretail_auth_token');
     setCurrentUser(null);

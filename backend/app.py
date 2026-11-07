@@ -1,16 +1,76 @@
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from datetime import datetime, timedelta
 import random
 import os
 import uuid
+import bcrypt
+from functools import wraps
 
 from data_store import db
 from ml_engine import pricing_engine, demand_forecaster, recommendation_engine
 from dataset_service import DatasetService
 
 app = Flask(__name__)
-CORS(app)
+# Restrict CORS to specific origins — update this list for your deployment
+CORS(app, origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"])
+
+# ---------------------------------------------------------------------------
+# Rate limiter — protects login from brute-force attacks
+# ---------------------------------------------------------------------------
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri="memory://"
+)
+
+# ---------------------------------------------------------------------------
+# In-memory token store (replace with Redis / DB for multi-process deploys)
+# ---------------------------------------------------------------------------
+_active_tokens: dict = {}  # token -> user_id
+
+def _issue_token(user_id: str) -> str:
+    token = f"nr-auth-{uuid.uuid4().hex}"
+    _active_tokens[token] = user_id
+    return token
+
+def _revoke_token(token: str):
+    _active_tokens.pop(token, None)
+
+def _get_token() -> str:
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        return auth_header[7:]
+    return ""
+
+def require_auth(f):
+    """Decorator that rejects requests without a valid session token."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = _get_token()
+        if not token or token not in _active_tokens:
+            return jsonify({"error": "Authentication required"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+def admin_required(f):
+    """Decorator that rejects requests from non-Admin users."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = _get_token()
+        if not token or token not in _active_tokens:
+            return jsonify({"error": "Authentication required"}), 401
+        if db.current_user.get("role") != "Admin":
+            return jsonify({"error": "Admin access required"}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+# Enforce a 10 MB upload limit
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+
 datasets = DatasetService()
 try:
     if datasets.get_active_dataset():
@@ -301,6 +361,7 @@ def calculate_dynamic_pricing():
     return jsonify(results)
 
 @app.route('/api/pricing/update', methods=['POST'])
+@require_auth
 def update_product_price():
     data = request.json or {}
     prod_id = data.get("product_id")
@@ -308,6 +369,13 @@ def update_product_price():
     
     if not prod_id or new_price is None:
         return jsonify({"error": "product_id and new_price required"}), 400
+
+    try:
+        new_price = float(new_price)
+    except (TypeError, ValueError):
+        return jsonify({"error": "new_price must be a valid number"}), 400
+    if new_price <= 0 or new_price > 10_000_000:
+        return jsonify({"error": "new_price must be between 1 and 10,000,000"}), 400
         
     product = (datasets.get_product(prod_id) if datasets.get_active_dataset() else None) or db.get_product_by_id(prod_id)
     if not product:
@@ -638,11 +706,49 @@ def get_audit_logs():
 
 
 @app.route('/api/users', methods=['GET'])
+@require_auth
 def get_users():
-    return jsonify({"current_user": db.current_user, "users": db.users, "roles": ["Admin", "Store Manager", "Analyst", "Supplier"]})
+    return jsonify({
+        "current_user": db.safe_user(db.current_user),
+        "users": [db.safe_user(u) for u in db.users],
+        "roles": ["Admin", "Store Manager", "Analyst", "Supplier"]
+    })
+
+
+@app.route('/api/users', methods=['POST'])
+@admin_required
+def create_user():
+    data = request.json or {}
+    try:
+        user = db.create_user(data)
+        return jsonify({"success": True, "user": user}), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route('/api/users/<user_id>', methods=['PUT'])
+@admin_required
+def update_user(user_id):
+    data = request.json or {}
+    updated = db.update_user(user_id, data)
+    if not updated:
+        return jsonify({"error": "User not found"}), 404
+    return jsonify({"success": True, "user": updated})
+
+
+@app.route('/api/users/<user_id>', methods=['DELETE'])
+@admin_required
+def delete_user(user_id):
+    # Prevent deleting the currently logged-in admin
+    if user_id == db.current_user.get("id"):
+        return jsonify({"error": "You cannot delete your own account"}), 400
+    if not db.delete_user(user_id):
+        return jsonify({"error": "User not found"}), 404
+    return jsonify({"success": True})
 
 
 @app.route('/api/auth/switch-role', methods=['POST'])
+@require_auth
 def switch_role():
     data = request.json or {}
     role = data.get("role")
@@ -663,6 +769,7 @@ def switch_role():
 
 
 @app.route('/api/auth/login', methods=['POST'])
+@limiter.limit("10 per minute")
 def auth_login():
     data = request.json or {}
     identifier = (data.get("username") or data.get("email") or data.get("id") or "").strip().lower()
@@ -691,11 +798,9 @@ def auth_login():
             return jsonify({"error": "Username or email is required"}), 400
         return jsonify({"error": "Invalid username or password"}), 401
 
-    # Enforce password
-    valid_passwords = ["123123123", "password123"]
-    if matched_user.get("password"):
-        valid_passwords.append(matched_user["password"])
-    if password not in valid_passwords:
+    # Verify password with bcrypt — no hardcoded fallback passwords
+    stored_hash = matched_user.get("password_hash", "")
+    if not stored_hash or not bcrypt.checkpw(password.encode(), stored_hash.encode()):
         return jsonify({"error": "Invalid username or password"}), 401
 
     matched_user["last_login"] = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -704,27 +809,31 @@ def auth_login():
     db.add_audit_log("User logged in", "Authentication", "Logged out", matched_user["role"], "security", user=matched_user["name"])
     db._save_state("active_role", matched_user["role"])
 
-    token = f"nr-auth-{uuid.uuid4().hex[:20]}"
+    token = _issue_token(matched_user["id"])
     return jsonify({
         "success": True,
         "token": token,
-        "user": matched_user,
+        "user": db.safe_user(matched_user),
         "message": f"Welcome back, {matched_user['name']}"
     })
 
 
 @app.route('/api/auth/logout', methods=['POST'])
+@require_auth
 def auth_logout():
+    token = _get_token()
+    _revoke_token(token)
     user_name = db.current_user.get("name", "User")
     db.add_audit_log("User logged out", "Authentication", db.current_user.get("role", "Admin"), "Session ended", "security", user=user_name)
     return jsonify({"success": True, "message": "Logged out successfully"})
 
 
 @app.route('/api/auth/me', methods=['GET'])
+@require_auth
 def auth_me():
     return jsonify({
         "authenticated": True,
-        "user": db.current_user,
+        "user": db.safe_user(db.current_user),
         "role": db.user_role
     })
 
@@ -794,4 +903,5 @@ def ai_chat():
 
 if __name__ == '__main__':
     print("Starting NeuroRetail Flask AI Backend on port 5000...")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # debug=False in all environments — never expose the Werkzeug debugger
+    app.run(host='0.0.0.0', port=5000, debug=os.getenv("FLASK_DEBUG", "0") == "1")
