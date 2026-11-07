@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bot, MessageSquareText } from 'lucide-react';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import DataUploadModule from './components/DataUploadModule';
@@ -30,7 +29,25 @@ const titles = {
 };
 
 function AssistantLanding({ onOpen }) {
-  return <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"><div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white"><Bot className="h-6 w-6" /></div><p className="mt-5 text-xs font-black uppercase tracking-[0.15em] text-blue-700">Optional AI assistant</p><h2 className="mt-2 text-2xl font-black text-slate-950 dark:text-white">Ask about the dashboard or a recommendation</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">The assistant is intentionally a supporting feature: it explains the business data and recommended actions, while the dashboard remains the primary decision workspace.</p><button type="button" onClick={onOpen} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700"><MessageSquareText className="h-4 w-4" />Open assistant</button></section>;
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white">
+        AI
+      </div>
+      <p className="mt-5 text-xs font-black uppercase tracking-[0.15em] text-blue-700">Optional AI assistant</p>
+      <h2 className="mt-2 text-2xl font-black text-slate-950 dark:text-white">Ask about the dashboard or a recommendation</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
+        The assistant explains business metrics and recommended actions while the dashboard remains your primary decision workspace.
+      </p>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700"
+      >
+        Open Assistant
+      </button>
+    </section>
+  );
 }
 
 export default function App() {

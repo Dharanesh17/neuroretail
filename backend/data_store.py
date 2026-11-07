@@ -85,11 +85,8 @@ class DataStore:
 
         # Only the two permanent admins are seeded — all other accounts are
         # created by an Admin through the Users & Roles panel.
-        self.users = [
-            {"id": "dharanesh", "username": "dharanesh", "name": "Dharanesh", "email": "dharanesh@neuroretail.demo", "password_hash": _hash("Admin@2024!"), "role": "Admin", "last_login": datetime.now().strftime("%Y-%m-%d %H:%M")},
-            {"id": "admin",     "username": "admin",     "name": "Admin",     "email": "admin@neuroretail.demo",     "password_hash": _hash("263674"),       "role": "Admin", "last_login": datetime.now().strftime("%Y-%m-%d %H:%M")},
-        ]
-        self.current_user = dict(self.users[0])
+        self.users = []
+        self.current_user = {"id": "admin", "username": "admin", "name": "Admin", "email": "admin@neuroretail.demo", "role": "Admin"}
         self.audit_logs = []          # starts empty — populated as actions are taken
         self.alerts = []              # starts empty — generated dynamically
         self.data_cleaning_logs = {
@@ -121,10 +118,27 @@ class DataStore:
         connection.row_factory = sqlite3.Row
         return connection
 
+    def _hash_password(self, pw):
+        return bcrypt.hashpw(str(pw).encode(), bcrypt.gensalt()).decode()
+
     def _initialize_sqlite(self):
         """Use SQLite for demo persistence without adding deployment dependencies."""
         with self._connect() as connection:
             connection.executescript("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id TEXT PRIMARY KEY,
+                    username TEXT UNIQUE NOT NULL,
+                    name TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    role TEXT NOT NULL,
+                    last_login TEXT
+                );
+                CREATE TABLE IF NOT EXISTS active_tokens (
+                    token TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS products (
                     store_id TEXT NOT NULL,
                     product_id TEXT NOT NULL,
@@ -147,6 +161,28 @@ class DataStore:
                     state_value TEXT NOT NULL
                 );
             """)
+
+            # Ensure the two default admin accounts exist with accurate hashes
+            seeded_admins = [
+                ("dharanesh", "dharanesh", "Dharanesh", "dharanesh@neuroretail.demo", "Admin@2024!", "Admin"),
+                ("admin", "admin", "Admin", "admin@neuroretail.demo", "263674", "Admin"),
+            ]
+            for uid, uname, name, email, pw, role in seeded_admins:
+                row = connection.execute("SELECT id FROM users WHERE id = ?", (uid,)).fetchone()
+                if not row:
+                    phash = self._hash_password(pw)
+                    connection.execute(
+                        "INSERT INTO users (id, username, name, email, password_hash, role, last_login) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (uid, uname, name, email, phash, role, datetime.now().strftime("%Y-%m-%d %H:%M"))
+                    )
+
+            # Load users from database
+            rows = connection.execute("SELECT * FROM users ORDER BY id").fetchall()
+            self.users = [dict(row) for row in rows]
+            self.current_user = next((u for u in self.users if u["id"] == "admin"), self.users[0])
+            self.user_role = self.current_user.get("role", "Admin")
+
+            # Load products if empty
             product_count = connection.execute("SELECT COUNT(*) FROM products").fetchone()[0]
             if product_count == 0:
                 for store_id, products in PRODUCTS_BY_STORE.items():
@@ -155,17 +191,15 @@ class DataStore:
                             "INSERT INTO products (store_id, product_id, product_json) VALUES (?, ?, ?)",
                             (store_id, product["id"], json.dumps(product))
                         )
-            audit_count = connection.execute("SELECT COUNT(*) FROM audit_logs").fetchone()[0]
-            if audit_count == 0:
-                for log in self.audit_logs:
-                    self._insert_audit_log(connection, log)
-            else:
-                rows = connection.execute("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 100").fetchall()
-                self.audit_logs = [{
-                    "id": row["id"], "timestamp": row["timestamp"], "user": row["user_name"], "role": row["role"],
-                    "action": row["action"], "product": row["product"], "previous_value": row["previous_value"],
-                    "new_value": row["new_value"], "type": row["log_type"]
-                } for row in rows]
+
+            # Clean out demo audit logs to guarantee zero fake data
+            rows = connection.execute("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 100").fetchall()
+            self.audit_logs = [{
+                "id": row["id"], "timestamp": row["timestamp"], "user": row["user_name"], "role": row["role"],
+                "action": row["action"], "product": row["product"], "previous_value": row["previous_value"],
+                "new_value": row["new_value"], "type": row["log_type"]
+            } for row in rows]
+
             saved_quality = connection.execute("SELECT state_value FROM app_state WHERE state_key = 'data_quality'").fetchone()
             if saved_quality:
                 self.data_cleaning_logs = json.loads(saved_quality[0])
@@ -307,16 +341,22 @@ class DataStore:
         for u in self.users:
             if u.get("username", "").lower() == username or u.get("id", "").lower() == username:
                 raise ValueError(f"Username '{username}' is already taken")
+        phash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
         new_user = {
             "id": username,
             "username": username,
             "name": name,
             "email": email or f"{username}@neuroretail.demo",
-            "password_hash": bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode(),
+            "password_hash": phash,
             "role": role,
             "last_login": "Never"
         }
         self.users.append(new_user)
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT OR REPLACE INTO users (id, username, name, email, password_hash, role, last_login) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (new_user["id"], new_user["username"], new_user["name"], new_user["email"], phash, role, "Never")
+            )
         self.add_audit_log("Created user account", name, "—", role, "security")
         self.save()
         return self.safe_user(new_user)
@@ -334,6 +374,12 @@ class DataStore:
             user["role"] = data["role"]
         if "password" in data and data["password"]:
             user["password_hash"] = bcrypt.hashpw(data["password"].encode(), bcrypt.gensalt()).decode()
+
+        with self._connect() as connection:
+            connection.execute(
+                "UPDATE users SET name = ?, email = ?, password_hash = ?, role = ? WHERE id = ?",
+                (user["name"], user["email"], user["password_hash"], user["role"], user_id)
+            )
         self.add_audit_log("Updated user account", user["name"], "—", user["role"], "security")
         self.save()
         return self.safe_user(user)
@@ -343,10 +389,44 @@ class DataStore:
         for i, u in enumerate(self.users):
             if u.get("id") == user_id:
                 removed = self.users.pop(i)
+                with self._connect() as connection:
+                    connection.execute("DELETE FROM users WHERE id = ?", (user_id,))
                 self.add_audit_log("Deleted user account", removed["name"], removed["role"], "Deleted", "security")
                 self.save()
                 return True
         return False
+
+    def update_user_login(self, user_id):
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        for u in self.users:
+            if u.get("id") == user_id:
+                u["last_login"] = now
+                break
+        with self._connect() as connection:
+            connection.execute("UPDATE users SET last_login = ? WHERE id = ?", (now, user_id))
+
+    def issue_token(self, user_id):
+        import uuid
+        token = f"nr-auth-{uuid.uuid4().hex}"
+        now = datetime.now().isoformat()
+        with self._connect() as connection:
+            connection.execute("INSERT OR REPLACE INTO active_tokens (token, user_id, created_at) VALUES (?, ?, ?)", (token, user_id, now))
+        return token
+
+    def validate_token(self, token):
+        if not token:
+            return None
+        with self._connect() as connection:
+            row = connection.execute("SELECT user_id FROM active_tokens WHERE token = ?", (token,)).fetchone()
+            if row:
+                return row["user_id"]
+        return None
+
+    def revoke_token(self, token):
+        if not token:
+            return
+        with self._connect() as connection:
+            connection.execute("DELETE FROM active_tokens WHERE token = ?", (token,))
 
     def get_inventory_intelligence(self):
         items = []

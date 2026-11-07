@@ -30,20 +30,16 @@ limiter = Limiter(
 # ---------------------------------------------------------------------------
 # In-memory token store (replace with Redis / DB for multi-process deploys)
 # ---------------------------------------------------------------------------
-_active_tokens: dict = {}  # token -> user_id
-
 def _issue_token(user_id: str) -> str:
-    token = f"nr-auth-{uuid.uuid4().hex}"
-    _active_tokens[token] = user_id
-    return token
+    return db.issue_token(user_id)
 
 def _revoke_token(token: str):
-    _active_tokens.pop(token, None)
+    db.revoke_token(token)
 
 def _get_token() -> str:
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
-        return auth_header[7:]
+        return auth_header[7:].strip()
     return ""
 
 def require_auth(f):
@@ -51,7 +47,8 @@ def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = _get_token()
-        if not token or token not in _active_tokens:
+        user_id = db.validate_token(token)
+        if not user_id:
             return jsonify({"error": "Authentication required"}), 401
         return f(*args, **kwargs)
     return decorated
@@ -61,9 +58,11 @@ def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = _get_token()
-        if not token or token not in _active_tokens:
+        user_id = db.validate_token(token)
+        if not user_id:
             return jsonify({"error": "Authentication required"}), 401
-        if db.current_user.get("role") != "Admin":
+        user = next((u for u in db.users if u["id"] == user_id), None)
+        if not user or user.get("role") != "Admin":
             return jsonify({"error": "Admin access required"}), 403
         return f(*args, **kwargs)
     return decorated
@@ -386,7 +385,10 @@ def update_product_price():
 
 @app.route('/api/forecast/<prod_id>', methods=['GET'])
 def get_product_forecast(prod_id):
-    days = int(request.args.get("days", 30))
+    try:
+        days = max(1, min(365, int(request.args.get("days", 30))))
+    except (TypeError, ValueError):
+        days = 30
     if datasets.get_active_dataset():
         result = datasets.forecast(prod_id, days=days)
         if result.get("available"):
@@ -406,7 +408,10 @@ def get_inventory_status():
 def process_reorder():
     data = request.json or {}
     prod_id = data.get("product_id")
-    quantity = int(data.get("quantity", 50))
+    try:
+        quantity = max(1, min(100000, int(data.get("quantity", 50))))
+    except (TypeError, ValueError):
+        quantity = 50
     
     prod = (datasets.get_product(prod_id) if datasets.get_active_dataset() else None) or db.get_product_by_id(prod_id)
     if not prod:
@@ -470,7 +475,10 @@ def get_iot_shelves():
 def decrement_iot_shelf():
     data = request.json or {}
     shelf_id = data.get("shelf_id")
-    units = int(data.get("units", 1))
+    try:
+        units = max(1, min(1000, int(data.get("units", 1))))
+    except (TypeError, ValueError):
+        units = 1
     
     updated_shelf = db.decrement_shelf_stock(shelf_id, units)
     if updated_shelf:
@@ -604,10 +612,25 @@ def simulate_scenario():
     if not product:
         return jsonify({"available": False, "reason": "No products found for scenario simulation."}), 422
     current_price = product.get("current_price") or product.get("base_price", 1000)
-    price = max(0, float(data.get("price", current_price)))
-    promotion_pct = max(0, min(80, float(data.get("promotion_pct", 0))))
-    inventory = max(0, int(data.get("inventory", product.get("stock") or 50)))
-    competitor_price = max(1, float(data.get("competitor_price", product.get("competitor_price") or current_price)))
+    try:
+        price = max(0.0, float(data.get("price", current_price)))
+    except (TypeError, ValueError):
+        price = float(current_price)
+
+    try:
+        promotion_pct = max(0.0, min(80.0, float(data.get("promotion_pct", 0))))
+    except (TypeError, ValueError):
+        promotion_pct = 0.0
+
+    try:
+        inventory = max(0, int(data.get("inventory", product.get("stock") or 50)))
+    except (TypeError, ValueError):
+        inventory = int(product.get("stock") or 50)
+
+    try:
+        competitor_price = max(1.0, float(data.get("competitor_price", product.get("competitor_price") or current_price)))
+    except (TypeError, ValueError):
+        competitor_price = float(current_price)
     
     baseline = 30
     if datasets.get_active_dataset():
@@ -796,14 +819,15 @@ def auth_login():
     if not matched_user:
         if not identifier:
             return jsonify({"error": "Username or email is required"}), 400
-        return jsonify({"error": "Invalid username or password"}), 401
+        return jsonify({"error": "User not found. Please check your username."}), 401
 
     # Verify password with bcrypt — no hardcoded fallback passwords
     stored_hash = matched_user.get("password_hash", "")
     if not stored_hash or not bcrypt.checkpw(password.encode(), stored_hash.encode()):
-        return jsonify({"error": "Invalid username or password"}), 401
+        return jsonify({"error": "Wrong password. Please try again."}), 401
 
     matched_user["last_login"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+    db.update_user_login(matched_user["id"])
     db.current_user = dict(matched_user)
     db.user_role = matched_user["role"]
     db.add_audit_log("User logged in", "Authentication", "Logged out", matched_user["role"], "security", user=matched_user["name"])

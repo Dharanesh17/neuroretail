@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Layers, TrendingUp } from 'lucide-react';
 import { api } from '../api/client';
 
 export default function CustomerAnalytics() {
@@ -15,8 +14,7 @@ export default function CustomerAnalytics() {
     <div className="space-y-5">
       {/* Header */}
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-blue-700 dark:text-blue-400">
-          <Users className="h-4 w-4" />
+        <div className="text-xs font-black uppercase tracking-wide text-blue-700 dark:text-blue-400">
           <span>Customer Behavioural Analytics Engine</span>
         </div>
         <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950 dark:text-white">
@@ -48,8 +46,7 @@ export default function CustomerAnalytics() {
 
       {/* Conversion Funnel */}
       <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <h3 className="mb-4 flex items-center gap-2 text-sm font-black text-slate-950 dark:text-white">
-          <Layers className="h-4 w-4 text-blue-600" />
+        <h3 className="mb-4 text-sm font-black text-slate-950 dark:text-white">
           <span>E-Commerce Conversion Funnel</span>
         </h3>
         <div className="space-y-4">
