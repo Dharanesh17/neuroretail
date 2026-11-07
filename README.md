@@ -204,6 +204,21 @@ docker compose up --build
 
 ---
 
+## Authentication & Admin Accounts
+
+The platform uses bcrypt hashed passwords and token-based session authentication with SQLite persistence (`neuroretail.db`).
+
+| Account Role | Username | Password | Access Level |
+| --- | --- | --- | --- |
+| **Primary Admin** | `dharanesh` | *(configured on setup)* | Full system & user administration |
+| **Second Admin** | `admin` | `263674` | Full system & user administration |
+| **Store Manager** | `manager` | *(configured)* | Operational management |
+| **Analyst** | `analyst` | *(configured)* | Analytics & model evaluation |
+
+> **Admin Permissions**: Only users with the **Admin** role can create, edit, or delete user accounts via the **Users & Roles** module or backend API (`/api/users`). Wrong password attempts return a secure `"Wrong password. Please try again."` message without leaking credentials.
+
+---
+
 ## Demo Roles
 
 Switch roles from the Navbar or Users & Roles page to simulate realistic access control:
