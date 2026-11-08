@@ -1,2 +1,17 @@
+[project]
+name = "neuroretail"
+version = "2.4.0"
+requires-python = ">=3.12"
+dependencies = [
+    "Flask>=3.0.0",
+    "flask-cors>=4.0.0",
+    "flask-limiter>=3.5.0",
+    "bcrypt>=4.0.0",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "scikit-learn>=1.3.0",
+    "joblib>=1.3.0",
+]
+
 [tool.vercel]
 entrypoint = "backend.app:app"
