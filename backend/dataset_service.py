@@ -155,19 +155,6 @@ class DatasetService:
                     FOREIGN KEY(dataset_id) REFERENCES datasets(dataset_id)
                 );
             """)
-            count = connection.execute("SELECT COUNT(*) FROM datasets").fetchone()[0]
-        if count == 0:
-            sample_path = os.path.join(ROOT, "reference_doc.csv")
-            if os.path.exists(sample_path):
-                try:
-                    with open(sample_path, "rb") as f:
-                        raw = f.read()
-                    ds = self.upload(raw, "reference_doc.csv", "NeuroRetail Core Dataset", "Default retail reference dataset for immediate operations", "System")
-                    self.process(ds["dataset_id"])
-                    self.activate(ds["dataset_id"])
-                    self.train(ds["dataset_id"])
-                except Exception as e:
-                    print(f"Dataset auto-seeding warning: {e}")
 
     # ---------- Dataset registry ----------
 

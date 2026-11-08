@@ -104,7 +104,7 @@ CSV / JSON Upload
 
 ```bash
 cd backend
-pip install -r requirements.txt
+pip install -r requirements.txt / python -m pip install -r requirements.txt
 python app.py
 ```
 

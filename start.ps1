@@ -1,4 +1,4 @@
-﻿# NeuroRetail — Start both servers
+# NeuroRetail — Start both servers
 # Run from the project root: .\start.ps1
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -24,3 +24,4 @@ Write-Host ""
 Write-Host "Admin credentials:" -ForegroundColor Cyan
 Write-Host "  Username: admin    Password: 263674" -ForegroundColor White
 Write-Host "  Username: dharanesh    Password: Admin@2024!" -ForegroundColor White
+

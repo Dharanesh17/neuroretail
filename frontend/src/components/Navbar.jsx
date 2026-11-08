@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Bot } from 'lucide-react';
 
 export default function Navbar({
   onOpenVoice,
@@ -81,9 +82,10 @@ export default function Navbar({
           <button
             type="button"
             onClick={onOpenVoice}
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-blue-100 bg-blue-50 px-3 text-xs font-bold text-blue-700 transition hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-300"
+            className="inline-flex h-10 items-center gap-2 justify-center rounded-lg border border-blue-100 bg-blue-50 px-3 text-xs font-bold text-blue-700 transition hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-300"
             title="AI assistant"
           >
+            <Bot className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             <span>Assistant</span>
           </button>
 

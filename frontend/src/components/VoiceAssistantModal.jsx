@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Mic, MicOff, Volume2, Bot } from 'lucide-react';
 
 export default function VoiceAssistantModal({ isOpen, onClose, summary, products, onNavigate, onTriggerRetrain }) {
   const [isListening, setIsListening] = useState(false);
@@ -95,8 +96,8 @@ export default function VoiceAssistantModal({ isOpen, onClose, summary, products
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-xs font-black text-white shadow-sm">
-              VOICE
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
+              <Bot className="h-5 w-5" />
             </div>
             <div>
               <h3 className="text-sm font-black text-slate-950 dark:text-white">NeuroVoice AI Assistant</h3>
@@ -117,13 +118,14 @@ export default function VoiceAssistantModal({ isOpen, onClose, summary, products
           <button
             type="button"
             onClick={toggleListening}
-            className={`relative flex h-24 w-24 items-center justify-center rounded-full text-sm font-black uppercase tracking-wider shadow-lg transition-all ${
+            className={`relative flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-full text-xs font-black uppercase tracking-wider shadow-lg transition-all ${
               isListening
                 ? 'bg-red-500 text-white shadow-red-200 dark:shadow-red-900'
                 : 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-105'
             }`}
           >
-            {isListening ? 'Stop' : 'Speak'}
+            {isListening ? <MicOff className="h-8 w-8" /> : <Mic className="h-8 w-8" />}
+            <span>{isListening ? 'Stop' : 'Speak'}</span>
             {isListening && (
               <span className="absolute inset-0 animate-ping rounded-full border-4 border-red-400 opacity-60" />
             )}
@@ -141,9 +143,12 @@ export default function VoiceAssistantModal({ isOpen, onClose, summary, products
         )}
 
         {/* AI Reply */}
-        <div className="m-5 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm font-medium leading-6 text-blue-900 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-100">
-          <p className="text-xs font-black uppercase text-blue-700 dark:text-blue-400 mb-1">Response:</p>
-          <p>{aiReply}</p>
+        <div className="m-5 flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm font-medium leading-6 text-blue-900 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-100">
+          <Volume2 className="mt-0.5 h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
+          <div>
+            <p className="text-xs font-black uppercase text-blue-700 dark:text-blue-400 mb-1">Response:</p>
+            <p>{aiReply}</p>
+          </div>
         </div>
 
         {/* Suggested Commands */}

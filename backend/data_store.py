@@ -53,27 +53,12 @@ STORES = [
 ]
 
 PRODUCTS_BY_STORE = {
-    "STORE-01": [
-        { "id": "PROD-101", "name": "NeuroPulse SmartWatch Pro", "category": "Wearables", "base_price": 19999.00, "current_price": 21499.00, "competitor_price": 20999.00, "stock": 18, "min_stock": 25, "max_stock": 150, "unit_cost": 11500.00, "demand_score": 88, "rating": 4.8, "return_rate": 0.02, "image_url": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=60" },
-        { "id": "PROD-102", "name": "AcousticSense ANC Headphones", "category": "Audio", "base_price": 14999.00, "current_price": 13999.00, "competitor_price": 14499.00, "stock": 62, "min_stock": 20, "max_stock": 120, "unit_cost": 7500.00, "demand_score": 74, "rating": 4.7, "return_rate": 0.04, "image_url": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60" },
-        { "id": "PROD-103", "name": "CogniHome Smart Hub", "category": "Smart Home", "base_price": 9999.00, "current_price": 10499.00, "competitor_price": 10299.00, "stock": 12, "min_stock": 15, "max_stock": 80, "unit_cost": 5200.00, "demand_score": 92, "rating": 4.5, "return_rate": 0.01, "image_url": "https://images.unsplash.com/photo-1558002038-1055907df827?w=500&auto=format&fit=crop&q=60" },
-        { "id": "PROD-104", "name": "OptiVision 4K Drone Cam", "category": "Electronics", "base_price": 39999.00, "current_price": 37999.00, "competitor_price": 38999.00, "stock": 9, "min_stock": 10, "max_stock": 40, "unit_cost": 22000.00, "demand_score": 81, "rating": 4.9, "return_rate": 0.05, "image_url": "https://images.unsplash.com/photo-1527977966376-1c8408f9f108?w=500&auto=format&fit=crop&q=60" },
-        { "id": "PROD-105", "name": "BioGrid Ergonomic Desk Lamp", "category": "Smart Home", "base_price": 5999.00, "current_price": 5499.00, "competitor_price": 5799.00, "stock": 95, "min_stock": 15, "max_stock": 60, "unit_cost": 2600.00, "demand_score": 45, "rating": 4.4, "return_rate": 0.03, "image_url": "https://images.unsplash.com/photo-1534073828943-f801091bb18c?w=500&auto=format&fit=crop&q=60" },
-        { "id": "PROD-106", "name": "HyperCharge MagSafe PowerBank", "category": "Accessories", "base_price": 3499.00, "current_price": 3799.00, "competitor_price": 3699.00, "stock": 110, "min_stock": 30, "max_stock": 200, "unit_cost": 1500.00, "demand_score": 95, "rating": 4.6, "return_rate": 0.01, "image_url": "https://images.unsplash.com/photo-1609592424009-41130e9d6d53?w=500&auto=format&fit=crop&q=60" }
-    ],
-    "STORE-02": [
-        { "id": "FASH-201", "name": "Organic Denim Jacket", "category": "Apparel", "base_price": 4999.00, "current_price": 5499.00, "competitor_price": 5299.00, "stock": 45, "min_stock": 15, "max_stock": 100, "unit_cost": 2100.00, "demand_score": 86, "rating": 4.6, "return_rate": 0.08, "image_url": "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500&auto=format&fit=crop&q=60" },
-        { "id": "FASH-202", "name": "Urban Leather Boots", "category": "Footwear", "base_price": 7999.00, "current_price": 8499.00, "competitor_price": 8299.00, "stock": 14, "min_stock": 20, "max_stock": 60, "unit_cost": 4100.00, "demand_score": 94, "rating": 4.9, "return_rate": 0.05, "image_url": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=60" }
-    ],
-    "STORE-03": [
-        { "id": "GROC-301", "name": "Organic Cold-Pressed Almond Milk", "category": "Dairy & Beverage", "base_price": 299.00, "current_price": 349.00, "competitor_price": 329.00, "stock": 80, "min_stock": 25, "max_stock": 200, "unit_cost": 160.00, "demand_score": 97, "rating": 4.7, "return_rate": 0.01, "image_url": "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=500&auto=format&fit=crop&q=60" }
-    ]
+    "STORE-01": [],
+    "STORE-02": [],
+    "STORE-03": []
 }
 
-INITIAL_PRODUCTS = [
-    { "id": "PROD-101", "name": "NeuroPulse SmartWatch Pro", "category": "Wearables", "base_price": 19999.00, "current_price": 21499.00, "competitor_price": 20999.00, "stock": 18, "min_stock": 25, "max_stock": 150, "unit_cost": 11500.00, "demand_score": 88, "rating": 4.8, "return_rate": 0.02, "image_url": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=60" },
-    { "id": "PROD-102", "name": "AcousticSense ANC Headphones", "category": "Audio", "base_price": 14999.00, "current_price": 13999.00, "competitor_price": 14499.00, "stock": 62, "min_stock": 20, "max_stock": 120, "unit_cost": 7500.00, "demand_score": 74, "rating": 4.7, "return_rate": 0.04, "image_url": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60" }
-]
+INITIAL_PRODUCTS = []
 
 class DataStore:
     def __init__(self):
@@ -181,16 +166,6 @@ class DataStore:
             self.users = [dict(row) for row in rows]
             self.current_user = next((u for u in self.users if u["id"] == "admin"), self.users[0])
             self.user_role = self.current_user.get("role", "Admin")
-
-            # Load products if empty
-            product_count = connection.execute("SELECT COUNT(*) FROM products").fetchone()[0]
-            if product_count == 0:
-                for store_id, products in PRODUCTS_BY_STORE.items():
-                    for product in products:
-                        connection.execute(
-                            "INSERT INTO products (store_id, product_id, product_json) VALUES (?, ?, ?)",
-                            (store_id, product["id"], json.dumps(product))
-                        )
 
             # Clean out demo audit logs to guarantee zero fake data
             rows = connection.execute("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 100").fetchall()
