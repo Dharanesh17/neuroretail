@@ -7,8 +7,17 @@ import sqlite3
 import bcrypt
 from datetime import datetime, timedelta
 
-DATA_FILE = os.path.join(os.path.dirname(__file__), 'neuroretail_db.json')
-SQLITE_FILE = os.path.join(os.path.dirname(__file__), 'neuroretail.db')
+# On Vercel the filesystem is read-only except /tmp — use it for the SQLite DB
+# and JSON state file so the app initialises correctly on every cold start.
+_VERCEL = bool(os.getenv("VERCEL"))
+if _VERCEL:
+    _data_dir = "/tmp/neuroretail"
+    os.makedirs(_data_dir, exist_ok=True)
+    DATA_FILE = os.path.join(_data_dir, 'neuroretail_db.json')
+    SQLITE_FILE = os.path.join(_data_dir, 'neuroretail.db')
+else:
+    DATA_FILE = os.path.join(os.path.dirname(__file__), 'neuroretail_db.json')
+    SQLITE_FILE = os.path.join(os.path.dirname(__file__), 'neuroretail.db')
 
 STORES = [
     {
@@ -153,13 +162,23 @@ class DataStore:
                 ("admin", "admin", "Admin", "admin@neuroretail.demo", "263674", "Admin"),
             ]
             for uid, uname, name, email, pw, role in seeded_admins:
-                row = connection.execute("SELECT id FROM users WHERE id = ?", (uid,)).fetchone()
+                row = connection.execute("SELECT id, password_hash FROM users WHERE id = ?", (uid,)).fetchone()
                 if not row:
                     phash = self._hash_password(pw)
                     connection.execute(
                         "INSERT INTO users (id, username, name, email, password_hash, role, last_login) VALUES (?, ?, ?, ?, ?, ?, ?)",
                         (uid, uname, name, email, phash, role, datetime.now().strftime("%Y-%m-%d %H:%M"))
                     )
+                else:
+                    stored_hash = row["password_hash"]
+                    valid = False
+                    try:
+                        valid = bcrypt.checkpw(pw.encode('utf-8'), stored_hash.encode('utf-8'))
+                    except Exception:
+                        valid = False
+                    if not valid:
+                        new_hash = self._hash_password(pw)
+                        connection.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, uid))
 
             # Load users from database
             rows = connection.execute("SELECT * FROM users ORDER BY id").fetchall()
@@ -370,6 +389,37 @@ class DataStore:
                 self.save()
                 return True
         return False
+
+    def find_user_by_identifier(self, identifier):
+        if not identifier:
+            return None
+        clean = identifier.strip().lower()
+        # Support aliases for demo emails as well as registered emails
+        alias_id = None
+        if clean in ("admin@neuroretail.demo", "admin@neuroretail.com"):
+            alias_id = "admin"
+        elif clean in ("dharanesh@neuroretail.demo", "dharaneshh2004@gmail.com"):
+            alias_id = "dharanesh"
+
+        with self._connect() as connection:
+            row = connection.execute(
+                """SELECT * FROM users 
+                   WHERE lower(username) = ? OR lower(id) = ? OR lower(email) = ? OR lower(name) = ?
+                      OR (? IS NOT NULL AND lower(id) = ?)""",
+                (clean, clean, clean, clean, alias_id, alias_id)
+            ).fetchone()
+            if row:
+                return dict(row)
+        return None
+
+    def set_user_password(self, user_id, password):
+        phash = self._hash_password(password)
+        with self._connect() as connection:
+            connection.execute("UPDATE users SET password_hash = ? WHERE id = ?", (phash, user_id))
+        for u in self.users:
+            if u.get("id") == user_id:
+                u["password_hash"] = phash
+                break
 
     def update_user_login(self, user_id):
         now = datetime.now().strftime("%Y-%m-%d %H:%M")

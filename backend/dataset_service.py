@@ -20,9 +20,19 @@ from sklearn.model_selection import train_test_split
 
 
 ROOT = os.path.dirname(__file__)
-SQLITE_FILE = os.path.join(ROOT, "neuroretail.db")
-UPLOAD_DIR = os.path.join(ROOT, "uploads")
-MODEL_DIR = os.path.join(ROOT, "models")
+# On Vercel the filesystem is read-only except /tmp — store uploads, models,
+# and the SQLite database there so the dataset pipeline works on cold starts.
+_VERCEL = bool(os.getenv("VERCEL"))
+if _VERCEL:
+    _data_dir = "/tmp/neuroretail"
+    os.makedirs(_data_dir, exist_ok=True)
+    SQLITE_FILE = os.path.join(_data_dir, "neuroretail.db")
+    UPLOAD_DIR = os.path.join(_data_dir, "uploads")
+    MODEL_DIR = os.path.join(_data_dir, "models")
+else:
+    SQLITE_FILE = os.path.join(ROOT, "neuroretail.db")
+    UPLOAD_DIR = os.path.join(ROOT, "uploads")
+    MODEL_DIR = os.path.join(ROOT, "models")
 
 # ---- In-process caches for high-frequency active dataset queries ----
 _records_cache: dict[str, pd.DataFrame] = {}

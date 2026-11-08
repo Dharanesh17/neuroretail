@@ -1,4 +1,4 @@
-const BASE_URL = '/api';
+const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // ---------------------------------------------------------------------------
 // Auth token helpers — token is kept in sessionStorage (not localStorage)
@@ -370,22 +370,26 @@ export const api = {
   async login({ email, username, id, password }) {
     const identifier = (username || id || email || '').trim();
     if (!identifier) return { success: false, error: 'Username is required' };
-    if (!password)   return { success: false, error: 'Password is required' };
+    if (!password) return { success: false, error: 'Password is required' };
     try {
       const res = await fetch(`${BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: identifier, email: identifier, id: identifier, password })
+        body: JSON.stringify({ username: identifier, email: identifier, id: identifier, password: String(password).trim() })
       });
-      const data = await res.json();
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (_) {
+        data = { error: res.status === 429 ? 'Too many attempts. Please wait a minute and try again.' : 'Unable to connect to the authentication server.' };
+      }
       if (res.ok && data.success) {
         if (data.token) sessionStorage.setItem('neuroretail_auth_token', data.token);
         return data;
       }
-      // Always show a generic error — never reveal password hints
       return { success: false, error: data?.error || 'Invalid username or password' };
     } catch (e) {
-      return { success: false, error: 'Cannot connect to the authentication server.' };
+      return { success: false, error: 'Cannot connect to the authentication server. Please check your network.' };
     }
   },
 
