@@ -105,7 +105,28 @@ class DataStore:
         self.shelves = []             # populated from live product catalogue
         self.customers = []           # no demo customers
         self.sales = []               # no demo sales — populated from real datasets
-        self._initialize_sqlite()
+        try:
+            self._initialize_sqlite()
+        except Exception as e:
+            # Fallback: if SQLite fails (e.g. Vercel cold start), seed users in memory
+            # so login still works. The database will retry on the next request.
+            print(f"SQLite init failed, using in-memory fallback: {e}")
+            self.users = [
+                {
+                    "id": "admin", "username": "admin", "name": "Admin",
+                    "email": "admin@neuroretail.com", "role": "Admin",
+                    "password_hash": self._hash_password("263674"),
+                    "last_login": "Never"
+                },
+                {
+                    "id": "dharanesh", "username": "dharanesh", "name": "Dharanesh",
+                    "email": "dharaneshh2004@gmail.com", "role": "Admin",
+                    "password_hash": self._hash_password("Admin@2024!"),
+                    "last_login": "Never"
+                },
+            ]
+            self.current_user = dict(self.users[0])
+            self.user_role = "Admin"
 
     def _connect(self):
         connection = sqlite3.connect(SQLITE_FILE)
@@ -401,15 +422,29 @@ class DataStore:
         elif clean in ("dharanesh@neuroretail.demo", "dharaneshh2004@gmail.com"):
             alias_id = "dharanesh"
 
-        with self._connect() as connection:
-            row = connection.execute(
-                """SELECT * FROM users 
-                   WHERE lower(username) = ? OR lower(id) = ? OR lower(email) = ? OR lower(name) = ?
-                      OR (? IS NOT NULL AND lower(id) = ?)""",
-                (clean, clean, clean, clean, alias_id, alias_id)
-            ).fetchone()
-            if row:
-                return dict(row)
+        try:
+            with self._connect() as connection:
+                row = connection.execute(
+                    """SELECT * FROM users 
+                       WHERE lower(username) = ? OR lower(id) = ? OR lower(email) = ? OR lower(name) = ?
+                          OR (? IS NOT NULL AND lower(id) = ?)""",
+                    (clean, clean, clean, clean, alias_id, alias_id)
+                ).fetchone()
+                if row:
+                    return dict(row)
+        except Exception:
+            pass  # Fall through to in-memory search
+
+        # In-memory fallback (works on Vercel even if SQLite is unavailable)
+        for u in self.users:
+            uid = u.get("id", "").lower()
+            uname = u.get("username", "").lower()
+            uemail = u.get("email", "").lower()
+            uname_full = u.get("name", "").lower()
+            if clean == uname or clean == uid or clean == uemail or clean == uname_full:
+                return u
+            if alias_id and uid == alias_id:
+                return u
         return None
 
     def set_user_password(self, user_id, password):
@@ -434,24 +469,42 @@ class DataStore:
         import uuid
         token = f"nr-auth-{uuid.uuid4().hex}"
         now = datetime.now().isoformat()
-        with self._connect() as connection:
-            connection.execute("INSERT OR REPLACE INTO active_tokens (token, user_id, created_at) VALUES (?, ?, ?)", (token, user_id, now))
+        try:
+            with self._connect() as connection:
+                connection.execute("INSERT OR REPLACE INTO active_tokens (token, user_id, created_at) VALUES (?, ?, ?)", (token, user_id, now))
+        except Exception:
+            pass  # In-memory fallback below
+        # Always keep token in memory so validate works even without SQLite
+        if not hasattr(self, '_mem_tokens'):
+            self._mem_tokens = {}
+        self._mem_tokens[token] = user_id
         return token
 
     def validate_token(self, token):
         if not token:
             return None
-        with self._connect() as connection:
-            row = connection.execute("SELECT user_id FROM active_tokens WHERE token = ?", (token,)).fetchone()
-            if row:
-                return row["user_id"]
+        # Check in-memory store first (works on Vercel even if SQLite is unavailable)
+        if hasattr(self, '_mem_tokens') and token in self._mem_tokens:
+            return self._mem_tokens[token]
+        try:
+            with self._connect() as connection:
+                row = connection.execute("SELECT user_id FROM active_tokens WHERE token = ?", (token,)).fetchone()
+                if row:
+                    return row["user_id"]
+        except Exception:
+            pass
         return None
 
     def revoke_token(self, token):
         if not token:
             return
-        with self._connect() as connection:
-            connection.execute("DELETE FROM active_tokens WHERE token = ?", (token,))
+        if hasattr(self, '_mem_tokens'):
+            self._mem_tokens.pop(token, None)
+        try:
+            with self._connect() as connection:
+                connection.execute("DELETE FROM active_tokens WHERE token = ?", (token,))
+        except Exception:
+            pass
 
     def get_inventory_intelligence(self):
         items = []

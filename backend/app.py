@@ -168,6 +168,20 @@ def executive_metrics():
         }
     }
 
+@app.route('/', methods=['GET'])
+def root():
+    return jsonify({
+        "service": "NeuroRetail Cognitive AI Engine",
+        "status": "online",
+        "version": "2.4.0",
+        "endpoints": {
+            "health": "/api/health",
+            "dashboard": "/api/dashboard/summary",
+            "login": "POST /api/auth/login"
+        }
+    })
+
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({
