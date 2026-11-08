@@ -969,6 +969,33 @@ def ai_chat():
         ans = f"Based on historical data for {db.get_active_store()['name']}, AI predicts steady +12% growth next quarter. Stock levels are healthy."
     return jsonify({"response": ans})
 
+
+# ---------------------------------------------------------------------------
+# SPA fallback — serve frontend index.html for non-API routes.
+# On Vercel, the rewrite rule handles most SPA routing at the CDN level.
+# This handler catches any non-API request that reaches Flask (e.g. if
+# the rewrite misses or the app runs standalone).
+# ---------------------------------------------------------------------------
+@app.errorhandler(404)
+def spa_fallback(e):
+    path = request.path
+    if path.startswith('/api/'):
+        return jsonify({"error": "Endpoint not found"}), 404
+    # Try to serve index.html from the public directory (Vercel build output)
+    try:
+        public_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'public')
+        index_path = os.path.join(public_dir, 'index.html')
+        if os.path.exists(index_path):
+            return send_file(index_path)
+    except Exception:
+        pass
+    return jsonify({
+        "service": "NeuroRetail Cognitive AI Engine",
+        "message": "API is running. Frontend not built — run 'npm run build' in frontend/.",
+        "endpoints": {"health": "/api/health", "login": "POST /api/auth/login"}
+    }), 404
+
+
 if __name__ == '__main__':
     print("Starting NeuroRetail Flask AI Backend on port 5000...")
     # debug=False in all environments — never expose the Werkzeug debugger

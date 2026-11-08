@@ -67,5 +67,10 @@ export default defineConfig({
         secure: false,
       }
     }
+  },
+  build: {
+    // On Vercel, output to ../public so Vercel serves static files from the CDN.
+    // Locally, output to dist for the standard Vite build workflow.
+    outDir: process.env.VERCEL ? '../public' : 'dist',
   }
 })

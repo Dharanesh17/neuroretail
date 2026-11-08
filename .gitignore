@@ -41,5 +41,8 @@ backend/reference_doc.csv
 backend/uploads/
 backend/models/
 
+# Vercel build output (created during deploy, not committed)
+public/
+
 # Logs
 *.log
