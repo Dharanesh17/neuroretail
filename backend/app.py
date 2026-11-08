@@ -981,10 +981,12 @@ def spa_fallback(e):
     path = request.path
     if path.startswith('/api/'):
         return jsonify({"error": "Endpoint not found"}), 404
-    # Try to serve index.html from the public directory (Vercel build output)
+    # Try to serve index.html from the public directory (Vercel build output).
+    # Use abspath so the path resolves correctly on Vercel's serverless runtime.
     try:
-        public_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'public')
-        index_path = os.path.join(public_dir, 'index.html')
+        _here = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(_here)
+        index_path = os.path.join(project_root, 'public', 'index.html')
         if os.path.exists(index_path):
             return send_file(index_path)
     except Exception:
