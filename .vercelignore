@@ -1,0 +1,45 @@
+# Docker / Render configs — not needed on Vercel
+docker-compose.yml
+render.yaml
+backend/Dockerfile
+backend/.dockerignore
+backend/requirements-docker.txt
+frontend/Dockerfile
+frontend/.dockerignore
+frontend/nginx.conf
+
+# Test files
+backend/tests/
+backend/.pytest_cache/
+run_api_tests.py
+
+# Agent / workflow config — not part of the app
+.agent/
+.gsd/
+scripts/
+GSD-STYLE.md
+PROJECT_RULES.md
+model_capabilities.yaml
+
+# Docs and misc
+neuroretail_api.http
+start.ps1
+VERSION
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Database and data files (created at runtime)
+*.db
+*.db-shm
+*.db-wal
+backend/neuroretail_db.json
+backend/reference_doc.csv
+backend/uploads/
+backend/models/
+
+# IDE
+.vscode/
+.idea/
