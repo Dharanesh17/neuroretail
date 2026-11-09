@@ -100,14 +100,18 @@ def product_forecast_snapshot(product, days=7):
 
 def price_explanation(product, pricing):
     reasons = []
-    stock_ratio = product["stock"] / max(product["min_stock"], 1)
+    stock = product.get("stock", 0)
+    min_stock = product.get("min_stock", 10)
+    stock_ratio = stock / max(min_stock, 1)
     if stock_ratio > 1.25:
         reasons.append("Current inventory is above the target level, so a controlled price reduction can release working capital.")
     elif stock_ratio <= 1:
         reasons.append("Inventory is at or below the safety threshold, so the price protects availability while demand remains strong.")
-    if product["competitor_price"] < product["current_price"]:
+    competitor_price = product.get("competitor_price")
+    current_price = product.get("current_price", product.get("base_price", 100))
+    if competitor_price is not None and competitor_price < current_price:
         reasons.append("A competitor is priced lower, creating a conversion risk at the current shelf price.")
-    elif product["competitor_price"] > product["current_price"]:
+    elif competitor_price is not None and competitor_price > current_price:
         reasons.append("The nearest competitor is priced higher, leaving room to improve margin without losing price position.")
     if product.get("demand_score", 50) >= 75:
         reasons.append("Historical sales signals indicate above-average demand for this SKU.")
@@ -120,22 +124,28 @@ def price_explanation(product, pricing):
 def build_decision(product):
     pricing = pricing_engine.predict_optimal_price(product)
     forecast = product_forecast_snapshot(product)
-    recommended_stock = min(product["max_stock"], max(product["min_stock"], int(forecast["predicted_demand"] * 1.15)))
-    replenishment = max(0, recommended_stock - product["stock"])
-    expected_units = min(forecast["predicted_demand"], product["stock"] + replenishment)
+    stock = product.get("stock", 0)
+    min_stock = product.get("min_stock", 10)
+    max_stock = product.get("max_stock", max(50, int(forecast["predicted_demand"] * 1.5)))
+    unit_cost = product.get("unit_cost", product.get("base_price", 100) * 0.5)
+    current_price = product.get("current_price", product.get("base_price", 100))
+    competitor_price = product.get("competitor_price")
+    recommended_stock = min(max_stock, max(min_stock, int(forecast["predicted_demand"] * 1.15)))
+    replenishment = max(0, recommended_stock - stock)
+    expected_units = min(forecast["predicted_demand"], stock + replenishment)
     expected_revenue = round(expected_units * pricing["recommended_price"], 0)
-    expected_profit = round(expected_units * (pricing["recommended_price"] - product["unit_cost"]), 0)
-    price_change_pct = round((pricing["recommended_price"] - product["current_price"]) / max(product["current_price"], 1) * 100, 1)
+    expected_profit = round(expected_units * (pricing["recommended_price"] - unit_cost), 0)
+    price_change_pct = round((pricing["recommended_price"] - current_price) / max(current_price, 1) * 100, 1)
     direction = "increase" if price_change_pct > 0 else "reduce"
     return {
-        "id": f"REC-{product['id']}", "product_id": product["id"], "product": product["name"], "category": product["category"],
-        "current_stock": product["stock"], "current_price": product["current_price"], "competitor_price": product["competitor_price"],
+        "id": f"REC-{product.get('id', 'UNKNOWN')}", "product_id": product.get("id", ""), "product": product.get("name", "Unknown"), "category": product.get("category", "Uncategorized"),
+        "current_stock": stock, "current_price": current_price, "competitor_price": competitor_price,
         "predicted_demand": forecast["predicted_demand"], "recommended_stock": recommended_stock, "replenishment_units": replenishment,
         "recommended_price": pricing["recommended_price"], "price_change_pct": price_change_pct,
         "expected_revenue": expected_revenue, "expected_profit": expected_profit, "profit_margin_pct": pricing["profit_margin_pct"],
         "confidence": pricing["confidence_score"], "strategy": pricing["strategy"], "reasons": price_explanation(product, pricing),
         "recommendation": f"{direction.capitalize()} price by {abs(price_change_pct)}%" + (f" and replenish approximately {replenishment} units." if replenishment else "."),
-        "priority": "High" if product["stock"] <= product["min_stock"] or replenishment >= 30 else "Medium"
+        "priority": "High" if stock <= min_stock or replenishment >= 30 else "Medium"
     }
 
 
@@ -337,7 +347,15 @@ def get_executive_dashboard():
         metrics["recommendations"] = [build_decision(p) for p in db.get_products()][:3]
     else:
         decision_data = datasets.recommendations()
-        metrics["recommendations"] = decision_data.get("recommendations", [])[:3]
+        recs = decision_data.get("recommendations", [])
+        if not recs:
+            # Fallback: use build_decision with dataset products if dataset recommendations are empty
+            ds_products = datasets.get_products()
+            if ds_products:
+                recs = [build_decision(p) for p in ds_products][:5]
+            else:
+                recs = [build_decision(p) for p in db.get_products()][:3]
+        metrics["recommendations"] = recs[:3]
     return jsonify(metrics)
 
 @app.route('/api/products', methods=['GET'])
