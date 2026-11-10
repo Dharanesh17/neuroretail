@@ -3,9 +3,21 @@ import os
 import random
 import csv
 import io
+import re
 import sqlite3
 import bcrypt
 from datetime import datetime, timedelta
+
+TOKEN_TTL_HOURS = int(os.getenv("TOKEN_TTL_HOURS", "24"))
+
+def validate_password_complexity(pw: str):
+    """Enforce minimum 8 chars, at least one letter and at least one digit."""
+    if not pw or len(str(pw)) < 8:
+        raise ValueError("Password must be at least 8 characters long.")
+    if not re.search(r"[A-Za-z]", str(pw)):
+        raise ValueError("Password must contain at least one letter.")
+    if not re.search(r"\d", str(pw)):
+        raise ValueError("Password must contain at least one number.")
 
 # On Vercel the filesystem is read-only except /tmp — use it for the SQLite DB
 # and JSON state file so the app initialises correctly on every cold start.
@@ -129,8 +141,10 @@ class DataStore:
             self.user_role = "Admin"
 
     def _connect(self):
-        connection = sqlite3.connect(SQLITE_FILE)
+        connection = sqlite3.connect(SQLITE_FILE, timeout=20.0)
         connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA foreign_keys = ON;")
+        connection.execute("PRAGMA journal_mode=WAL;")
         return connection
 
     def _hash_password(self, pw):
@@ -178,9 +192,11 @@ class DataStore:
             """)
 
             # Ensure the two default admin accounts exist with accurate hashes
+            admin_pw = os.getenv("ADMIN_PASSWORD", "263674")
+            dharanesh_pw = os.getenv("DHARANESH_PASSWORD", "Admin@2024!")
             seeded_admins = [
-                ("dharanesh", "dharanesh", "Dharanesh", "dharanesh@neuroretail.demo", "Admin@2024!", "Admin"),
-                ("admin", "admin", "Admin", "admin@neuroretail.demo", "263674", "Admin"),
+                ("dharanesh", "dharanesh", "Dharanesh", "dharanesh@neuroretail.demo", dharanesh_pw, "Admin"),
+                ("admin", "admin", "Admin", "admin@neuroretail.demo", admin_pw, "Admin"),
             ]
             for uid, uname, name, email, pw, role in seeded_admins:
                 row = connection.execute("SELECT id, password_hash FROM users WHERE id = ?", (uid,)).fetchone()
@@ -206,6 +222,12 @@ class DataStore:
             self.users = [dict(row) for row in rows]
             self.current_user = next((u for u in self.users if u["id"] == "admin"), self.users[0])
             self.user_role = self.current_user.get("role", "Admin")
+
+            # Clean up expired tokens on startup
+            try:
+                self.cleanup_expired_tokens()
+            except Exception:
+                pass
 
             # Clean out demo audit logs to guarantee zero fake data
             rows = connection.execute("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 100").fetchall()
@@ -350,6 +372,7 @@ class DataStore:
 
         if not username or not name or not password:
             raise ValueError("username, name, and password are required")
+        validate_password_complexity(password)
         if role not in ["Admin", "Store Manager", "Analyst", "Supplier"]:
             raise ValueError("Invalid role")
         # Uniqueness check
@@ -388,6 +411,7 @@ class DataStore:
         if "role" in data and data["role"] in ["Admin", "Store Manager", "Analyst", "Supplier"]:
             user["role"] = data["role"]
         if "password" in data and data["password"]:
+            validate_password_complexity(data["password"])
             user["password_hash"] = bcrypt.hashpw(data["password"].encode(), bcrypt.gensalt()).decode()
 
         with self._connect() as connection:
@@ -468,32 +492,67 @@ class DataStore:
     def issue_token(self, user_id):
         import uuid
         token = f"nr-auth-{uuid.uuid4().hex}"
-        now = datetime.now().isoformat()
+        now_dt = datetime.now()
+        now_str = now_dt.isoformat()
         try:
             with self._connect() as connection:
-                connection.execute("INSERT OR REPLACE INTO active_tokens (token, user_id, created_at) VALUES (?, ?, ?)", (token, user_id, now))
+                connection.execute("INSERT OR REPLACE INTO active_tokens (token, user_id, created_at) VALUES (?, ?, ?)", (token, user_id, now_str))
         except Exception:
             pass  # In-memory fallback below
-        # Always keep token in memory so validate works even without SQLite
         if not hasattr(self, '_mem_tokens'):
             self._mem_tokens = {}
-        self._mem_tokens[token] = user_id
+        self._mem_tokens[token] = {"user_id": user_id, "created_at": now_dt}
         return token
 
     def validate_token(self, token):
         if not token:
             return None
-        # Check in-memory store first (works on Vercel even if SQLite is unavailable)
+        ttl_delta = timedelta(hours=TOKEN_TTL_HOURS)
+        now_dt = datetime.now()
+
+        # Check in-memory store first
         if hasattr(self, '_mem_tokens') and token in self._mem_tokens:
-            return self._mem_tokens[token]
+            info = self._mem_tokens[token]
+            if isinstance(info, dict):
+                if now_dt - info.get("created_at", now_dt) > ttl_delta:
+                    self.revoke_token(token)
+                    return None
+                return info["user_id"]
+            return info  # Backwards compatibility
+
         try:
             with self._connect() as connection:
-                row = connection.execute("SELECT user_id FROM active_tokens WHERE token = ?", (token,)).fetchone()
+                row = connection.execute("SELECT user_id, created_at FROM active_tokens WHERE token = ?", (token,)).fetchone()
                 if row:
+                    try:
+                        created_dt = datetime.fromisoformat(row["created_at"])
+                        if now_dt - created_dt > ttl_delta:
+                            connection.execute("DELETE FROM active_tokens WHERE token = ?", (token,))
+                            return None
+                    except Exception:
+                        pass
+                    if not hasattr(self, '_mem_tokens'):
+                        self._mem_tokens = {}
+                    self._mem_tokens[token] = {"user_id": row["user_id"], "created_at": now_dt}
                     return row["user_id"]
         except Exception:
             pass
         return None
+
+    def cleanup_expired_tokens(self):
+        """Purge tokens older than TOKEN_TTL_HOURS."""
+        ttl_delta = timedelta(hours=TOKEN_TTL_HOURS)
+        cutoff_dt = datetime.now() - ttl_delta
+        cutoff_str = cutoff_dt.isoformat()
+        if hasattr(self, '_mem_tokens'):
+            expired = [t for t, info in self._mem_tokens.items() if isinstance(info, dict) and info.get("created_at") and info["created_at"] < cutoff_dt]
+            for t in expired:
+                self._mem_tokens.pop(t, None)
+        try:
+            with self._connect() as connection:
+                connection.execute("DELETE FROM active_tokens WHERE created_at < ?", (cutoff_str,))
+        except Exception:
+            pass
 
     def revoke_token(self, token):
         if not token:

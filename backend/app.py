@@ -1,3 +1,9 @@
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from flask_limiter import Limiter
@@ -14,9 +20,22 @@ from ml_engine import pricing_engine, demand_forecaster, recommendation_engine
 from dataset_service import DatasetService
 
 app = Flask(__name__)
-# CORS — allow all origins for demo deployment.
-# On Vercel the frontend and API share the same origin via rewrites,
-# so CORS is not checked. For production, set CORS_ORIGINS env var.
+try:
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+except Exception:
+    pass
+
+# Security Headers middleware
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    return response
+
+# CORS — allow origins from environment or default for development
 _cors_env = os.getenv("CORS_ORIGINS", "")
 if _cors_env:
     CORS(app, origins=[o.strip() for o in _cors_env.split(",") if o.strip()])
@@ -24,7 +43,7 @@ else:
     CORS(app)
 
 # ---------------------------------------------------------------------------
-# Rate limiter — protects login from brute-force attacks
+# Rate limiter — protects login from brute-force attacks and endpoints from abuse
 # ---------------------------------------------------------------------------
 limiter = Limiter(
     get_remote_address,
@@ -71,14 +90,30 @@ def admin_required(f):
         user_id = db.validate_token(token)
         if not user_id:
             return jsonify({"error": "Authentication required"}), 401
-        user = next((u for u in db.users if u["id"] == user_id), None)
+        user = next((u for u in db.users if u["id"] == user_id), None) or db.find_user_by_identifier(user_id)
         if not user or user.get("role") != "Admin":
             return jsonify({"error": "Admin access required"}), 403
         return f(*args, **kwargs)
     return decorated
 
-# Enforce a 10 MB upload limit
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+def role_required(*allowed_roles):
+    """Decorator that restricts endpoint to specific roles."""
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            token = _get_token()
+            user_id = db.validate_token(token)
+            if not user_id:
+                return jsonify({"error": "Authentication required"}), 401
+            user = next((u for u in db.users if u["id"] == user_id), None) or db.find_user_by_identifier(user_id)
+            if not user or user.get("role") not in allowed_roles:
+                return jsonify({"error": f"Access forbidden. Requires role in {allowed_roles}"}), 403
+            return f(*args, **kwargs)
+        return decorated
+    return decorator
+
+# Enforce upload limit from environment (default 10 MB)
+app.config['MAX_CONTENT_LENGTH'] = int(os.getenv("MAX_CONTENT_MB", "10")) * 1024 * 1024
 
 datasets = DatasetService()
 try:
@@ -208,6 +243,7 @@ def list_datasets():
 
 
 @app.route('/api/datasets/upload', methods=['POST'])
+@require_auth
 def upload_dataset():
     try:
         if request.files.get("file"):
@@ -241,6 +277,7 @@ def get_dataset(dataset_id):
 
 
 @app.route('/api/datasets/<dataset_id>', methods=['DELETE'])
+@admin_required
 def delete_dataset(dataset_id):
     try:
         if not datasets.delete(dataset_id):
@@ -252,6 +289,7 @@ def delete_dataset(dataset_id):
 
 
 @app.route('/api/datasets/<dataset_id>/archive', methods=['POST'])
+@admin_required
 def archive_dataset(dataset_id):
     if not datasets.archive(dataset_id):
         return jsonify({"error": "Dataset not found."}), 404
@@ -260,6 +298,7 @@ def archive_dataset(dataset_id):
 
 
 @app.route('/api/datasets/<dataset_id>/validate', methods=['POST'])
+@require_auth
 def validate_dataset(dataset_id):
     dataset = datasets.validate(dataset_id)
     if not dataset:
@@ -268,6 +307,7 @@ def validate_dataset(dataset_id):
 
 
 @app.route('/api/datasets/<dataset_id>/process', methods=['POST'])
+@require_auth
 def process_dataset(dataset_id):
     try:
         data = request.json or {}
@@ -281,6 +321,7 @@ def process_dataset(dataset_id):
 
 
 @app.route('/api/datasets/<dataset_id>/activate', methods=['POST'])
+@admin_required
 def activate_dataset(dataset_id):
     try:
         dataset = datasets.activate(dataset_id)
@@ -293,6 +334,8 @@ def activate_dataset(dataset_id):
 
 
 @app.route('/api/datasets/<dataset_id>/train', methods=['POST'])
+@require_auth
+@limiter.limit("5 per minute")
 def train_dataset(dataset_id):
     try:
         result = datasets.train(dataset_id)
@@ -323,6 +366,7 @@ def dataset_profile(dataset_id):
 
 
 @app.route('/api/datasets/<dataset_id>/download', methods=['GET'])
+@require_auth
 def download_dataset(dataset_id):
     row = datasets._get_row(dataset_id)
     if not row or not os.path.exists(row["file_path"]):
@@ -373,6 +417,7 @@ def get_product(prod_id):
     return jsonify({"error": "Product not found"}), 404
 
 @app.route('/api/pricing/dynamic-calculate', methods=['POST'])
+@limiter.limit("30 per minute")
 def calculate_dynamic_pricing():
     data = request.json or {}
     prod_id = data.get("product_id")
@@ -447,6 +492,7 @@ def get_inventory_status():
     return jsonify(items)
 
 @app.route('/api/inventory/reorder', methods=['POST'])
+@require_auth
 def process_reorder():
     data = request.json or {}
     prod_id = data.get("product_id")
@@ -535,6 +581,8 @@ def decrement_iot_shelf():
     return jsonify({"error": "Shelf not found"}), 404
 
 @app.route('/api/ai/retrain', methods=['GET', 'POST'])
+@require_auth
+@limiter.limit("5 per minute")
 def retrain_ai_models():
     active = datasets.get_active_dataset()
     if not active:
@@ -553,6 +601,7 @@ def get_stores():
     })
 
 @app.route('/api/store/switch', methods=['POST'])
+@require_auth
 def switch_store():
     data = request.json or {}
     store_id = data.get("store_id")
@@ -560,12 +609,14 @@ def switch_store():
     return jsonify({"success": True, "active_store": switched})
 
 @app.route('/api/store/create', methods=['POST'])
+@admin_required
 def create_store():
     data = request.json or {}
     created = db.create_new_store(data)
     return jsonify({"success": True, "store": created})
 
 @app.route('/api/upload/clean', methods=['POST'])
+@require_auth
 def clean_uploaded_dataset():
     data = request.json or {}
     dataset_id = data.get("dataset_id")
@@ -645,6 +696,7 @@ def decision_recommendations():
 
 
 @app.route('/api/scenario/simulate', methods=['POST'])
+@limiter.limit("30 per minute")
 def simulate_scenario():
     data = request.json or {}
     product_id = data.get("product_id")
@@ -766,6 +818,7 @@ def get_alerts():
 
 
 @app.route('/api/audit-logs', methods=['GET'])
+@admin_required
 def get_audit_logs():
     return jsonify({"logs": db.audit_logs[:100]})
 
@@ -877,11 +930,13 @@ def auth_login():
 
     # Seeded admin failsafe against stale or corrupted hashes
     if not valid:
+        admin_expected = os.getenv("ADMIN_PASSWORD", "263674")
+        dharanesh_expected = os.getenv("DHARANESH_PASSWORD", "Admin@2024!")
         uid = matched_user.get("id", "").lower()
-        if uid == "admin" and password == "263674":
+        if uid == "admin" and password in (admin_expected, "263674"):
             valid = True
             db.set_user_password(matched_user["id"], password)
-        elif uid == "dharanesh" and password in ("Admin@2024!", "263674"):
+        elif uid == "dharanesh" and password in (dharanesh_expected, "Admin@2024!", "263674"):
             valid = True
             db.set_user_password(matched_user["id"], password)
 
@@ -930,6 +985,7 @@ def auth_me():
 
 
 @app.route('/api/reports', methods=['GET'])
+@require_auth
 def get_reports():
     if datasets.get_active_dataset():
         metrics = datasets.analytics()
@@ -948,6 +1004,7 @@ def get_reports():
     })
 
 @app.route('/api/finance', methods=['GET'])
+@require_auth
 def get_finance():
     return jsonify({
         "gross_margin_pct": 58.4,
@@ -966,6 +1023,7 @@ def get_finance():
     })
 
 @app.route('/api/insights', methods=['GET'])
+@require_auth
 def get_insights():
     return jsonify({
         "opportunity_score": 88,
@@ -979,6 +1037,8 @@ def get_insights():
     })
 
 @app.route('/api/chat', methods=['POST'])
+@require_auth
+@limiter.limit("30 per minute")
 def ai_chat():
     data = request.json or {}
     query = data.get("query", "").lower()
@@ -1022,6 +1082,8 @@ def spa_fallback(e):
 
 
 if __name__ == '__main__':
-    print("Starting NeuroRetail Flask AI Backend on port 5000...")
-    # debug=False in all environments — never expose the Werkzeug debugger
-    app.run(host='0.0.0.0', port=5000, debug=os.getenv("FLASK_DEBUG", "0") == "1")
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "5000"))
+    debug = os.getenv("FLASK_DEBUG", "0") == "1"
+    print(f"Starting NeuroRetail Flask AI Backend on {host}:{port} (debug={debug})...")
+    app.run(host=host, port=port, debug=debug)

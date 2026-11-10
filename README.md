@@ -93,24 +93,51 @@ CSV / JSON Upload
 
 ---
 
-## Run Locally
+## Run Locally & Deployment
 
-### Prerequisites
+### Quick Start (Windows 1-Click)
 
+From PowerShell in the project root:
+```powershell
+.\start.ps1
+```
+This automatically starts both the Waitress production WSGI backend on port 5000 and the frontend on port 5173.
+
+### Manual Setup
+
+#### Prerequisites
 - Python 3.10+
 - Node.js 18+
 
-### 1. Start the Backend API
+#### 1. Configure Environment
+Copy `.env.example` to `.env` in `backend/`:
+```bash
+cp backend/.env.example backend/.env
+```
+Key configuration parameters:
+- `ADMIN_PASSWORD` / `DHARANESH_PASSWORD`: Seeded administrator credentials
+- `CORS_ORIGINS`: Allowed origins (e.g. `http://localhost:5173`)
+- `TOKEN_TTL_HOURS`: Session token lifetime (default: 24h)
+- `WAITRESS_THREADS`: Thread pool size for production server (default: 8)
 
+#### 2. Start the Backend API
+
+**Development server:**
 ```bash
 cd backend
-pip install -r requirements.txt / python -m pip install -r requirements.txt
+python -m pip install -r requirements.txt
 python app.py
 ```
 
-The Flask API starts on `http://localhost:5000`. SQLite is initialised automatically on first run.
+**Production WSGI server (Multi-threaded Waitress):**
+```bash
+cd backend
+python wsgi.py
+```
 
-### 2. Start the Frontend
+The API starts on `http://localhost:5000`. SQLite is initialised automatically on first run.
+
+#### 3. Start the Frontend
 
 ```bash
 cd frontend
@@ -118,9 +145,23 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173` (or the port shown in the terminal if 5173 is busy).
+Open `http://localhost:5173`.
 
-> **Note:** `@babel/types` is pinned to `7.26.10` via `package.json` overrides to permanently prevent a known npm registry issue with newer versions where `validators/react/isReactComponent.js` is missing from the published tarball.
+---
+
+## Security Architecture
+
+NeuroRetail incorporates enterprise-grade security controls across the stack:
+
+| Layer | Security Controls Implemented |
+| --- | --- |
+| **Authentication** | 24-hour token TTL with automated expiration cleanup; bcrypt password hashing with salt; password complexity enforcement (min 8 characters, letters and numbers). |
+| **Authorization** | Strict RBAC (`@require_auth`, `@admin_required`, `@role_required`) protecting all sensitive operational endpoints, audit logs, and dataset mutations. |
+| **API & Headers** | OWASP HTTP security headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection`, `Referrer-Policy`). |
+| **Rate Limiting** | Endpoint-specific rate throttling via Flask-Limiter (60 req/min for auth, 5 req/min for heavy ML retraining, 30 req/min for scenario simulation & AI chat). |
+| **Input Validation** | File upload sanitization against directory traversal; CSV formula injection neutralization; strict type and boundary validation on pricing and reorder inputs. |
+| **Database** | SQLite WAL mode for high concurrency; `PRAGMA foreign_keys = ON;` connection timeouts; 100% parameterized queries. |
+| **Production WSGI** | Multi-threaded Waitress server entrypoint (`wsgi.py`) with `ProxyFix` middleware support. |
 
 ---
 

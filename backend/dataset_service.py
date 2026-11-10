@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import sqlite3
 import uuid
 from datetime import datetime, timedelta
@@ -120,9 +121,9 @@ class DatasetService:
     def _connect(self):
         connection = sqlite3.connect(SQLITE_FILE, timeout=30)
         connection.row_factory = sqlite3.Row
-        # WAL mode: writers don't block readers; significantly faster for concurrent access
-        connection.execute("PRAGMA journal_mode=WAL")
-        connection.execute("PRAGMA synchronous=NORMAL")
+        connection.execute("PRAGMA foreign_keys = ON;")
+        connection.execute("PRAGMA journal_mode=WAL;")
+        connection.execute("PRAGMA synchronous=NORMAL;")
         return connection
 
     def _initialise_database(self):
@@ -203,8 +204,9 @@ class DatasetService:
         if frame.empty:
             raise ValueError("The uploaded file contains no data rows.")
         dataset_id = f"DS-{uuid.uuid4().hex[:10].upper()}"
-        dataset_name = (dataset_name or os.path.splitext(os.path.basename(filename))[0]).strip()[:120]
-        stored_filename = f"{dataset_id}_{os.path.basename(filename)}"
+        safe_base = re.sub(r"[^a-zA-Z0-9_.-]", "_", os.path.basename(filename))
+        dataset_name = (dataset_name or os.path.splitext(safe_base)[0]).strip()[:120]
+        stored_filename = f"{dataset_id}_{safe_base}"
         file_path = os.path.join(UPLOAD_DIR, stored_filename)
         with open(file_path, "wb") as file_handle:
             file_handle.write(raw)
