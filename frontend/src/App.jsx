@@ -115,11 +115,10 @@ export default function App() {
       const res = await api.login(credentials);
       if (res && res.success && res.user) {
         setCurrentUser(res.user);
-        // Store the safe user object (no password) in sessionStorage — clears on tab close
-        // The auth token is stored in sessionStorage by api.login()
-        if (credentials.rememberMe !== false) {
-          sessionStorage.setItem('neuroretail_session_user', JSON.stringify(res.user));
-        }
+        // Always store the session user alongside the token — both live in sessionStorage
+        // (auto-cleared on tab close), so "remember me" only affects long-term persistence,
+        // not this tab. Without this, an unchecked "remember me" leaves the token orphaned.
+        sessionStorage.setItem('neuroretail_session_user', JSON.stringify(res.user));
         await loadData();
         return { success: true };
       }

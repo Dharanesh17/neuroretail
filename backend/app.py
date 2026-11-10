@@ -917,10 +917,15 @@ def auth_logout():
 @app.route('/api/auth/me', methods=['GET'])
 @require_auth
 def auth_me():
+    # Resolve the user from the presented token, not the global mutable current_user,
+    # so this endpoint works correctly in multi-user and serverless scenarios.
+    token = _get_token()
+    user_id = db.validate_token(token)
+    user = next((u for u in db.users if u["id"] == user_id), db.current_user)
     return jsonify({
         "authenticated": True,
-        "user": db.safe_user(db.current_user),
-        "role": db.user_role
+        "user": db.safe_user(user),
+        "role": user.get("role", db.user_role)
     })
 
 
