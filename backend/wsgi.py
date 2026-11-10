@@ -19,3 +19,4 @@ if __name__ == "__main__":
     threads = int(os.getenv("WAITRESS_THREADS", "8"))
     print(f"Starting NeuroRetail Production Server on http://{host}:{port} with {threads} threads...")
     serve(app, host=host, port=port, threads=threads)
+
